@@ -1,79 +1,116 @@
-# Svelte library
+# Editor
 
-Everything you need to build a Svelte library, powered by [`sv`](https://npmjs.com/package/sv).
+A visual article editor for Svelte 5, written for the Lemiesz journal ("redakcja"). Editors see their text as it will
+look (bold, headings, lists, quotes, images, source citations); what is stored is **Markdown**, and readers get safe
+HTML made from it.
 
-Read more about creating a library [in the docs](https://svelte.dev/docs/kit/packaging).
+No third-party editor libraries: everything here is our own code on top of the browser's `contenteditable`.
 
-## Creating a project
+## Try it on your computer
 
-If you're seeing this, you've probably already done this step. Congrats!
+You need Git and Node.js 22.13 or newer.
 
-```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-npx sv@1.2.0 create --template library --types ts --add prettier eslint vitest="usages:unit,component" --no-download-check --install npm .
-```
-
-## Adding features
-
-Add features to your project with `sv add`:
-
-```sh
-npx sv add
-```
-
-For example, to add Tailwind CSS:
-
-```sh
-npx sv add tailwindcss
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
+```bash
+git clone https://github.com/deodatus-fringilla/editor.git
+cd editor
+git checkout claude/editor-build
+npm install
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.
+Open the address it prints (usually http://localhost:5173). On the left is the editor; on the right you can switch
+between **What readers see** and **Markdown that is stored** (you can edit the Markdown there too, and the editor
+follows).
 
-## Building
+To get newer work later:
 
-To build your library:
-
-```sh
-npm pack
+```bash
+git pull
+npm install
 ```
 
-To create a production version of your showcase app:
+Uploaded test images go to `static/uploads/` and are recorded in `data/editor.db` (SQLite). Both are ignored by Git.
 
-```sh
-npm run build
+## What it does
+
+|             |                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------- |
+| Text        | bold, italic, links, headings 2–4, bulleted and numbered lists, block quotes                            |
+| Images      | pick a file, paste or drag one in; alt text (required) and caption; click an image to edit it           |
+| Citations   | `[[src:12]]` and `[[quote:3]]` show as chips in the editor and as numbered footnotes for readers        |
+| Paste       | Word, Google Docs and web pages are cleaned to the supported formatting; plain text is read as Markdown |
+| Undo / redo | its own history (the browser's is not used)                                                             |
+| Languages   | Polish and English labels included; the host can pass any labels                                        |
+
+### Keyboard shortcuts
+
+|                                                         |                                  |
+| ------------------------------------------------------- | -------------------------------- |
+| Bold, italic, link                                      | Ctrl+B, Ctrl+I, Ctrl+K           |
+| Paragraph, headings 2–4                                 | Ctrl+Alt+0, 2, 3, 4              |
+| Bulleted, numbered list, quote                          | Ctrl+Shift+8, 7, 9               |
+| Undo, redo                                              | Ctrl+Z, Ctrl+Shift+Z (or Ctrl+Y) |
+| Backspace at the start of a heading, list item or quote | turns it into a plain paragraph  |
+| Shift+Enter                                             | line break inside a paragraph    |
+
+(On a Mac, use ⌘ instead of Ctrl.)
+
+## Using the component
+
+```svelte
+<script>
+	import { Editor, Preview, labelsPl } from 'editor';
+
+	let markdown = $state('');
+</script>
+
+<Editor
+	bind:value={markdown}
+	labels={labelsPl}
+	onUploadImage={async (file) => ({ src: '/where/it/is.png' })}
+	onDeleteImage={async (src) => {}}
+	onPickCitation={async () => ({ kind: 'src', id: 12 })}
+/>
+
+<Preview value={markdown} />
 ```
 
-You can preview the production build with `npm run preview`.
+| Prop                                       |                                                                                                                                                |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `value` (bindable)                         | the article as Markdown                                                                                                                        |
+| `onchange(markdown)`                       | called after each change                                                                                                                       |
+| `onUploadImage(file)`                      | stores the image and returns `{ src, alt?, caption? }`. Without it the image button is hidden. The component never assumes where images live.  |
+| `onDeleteImage(src)`                       | optional. When given, removing an image asks: remove from this article only, or also delete the file. It is called only for the second choice. |
+| `onPickCitation()`                         | optional. Returns `{ kind: 'src' \| 'quote', id }`, or `null`. Without it the citation button is hidden.                                       |
+| `labels`                                   | any of the texts (see `labelsEn`, `labelsPl`)                                                                                                  |
+| `requireAlt`                               | default `true`: an image needs alt text                                                                                                        |
+| `readonly`, `placeholder`, `lang`, `class` | as expected                                                                                                                                    |
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Colours and fonts are CSS variables (`--mde-bg`, `--mde-fg`, `--mde-accent`, `--mde-font`, `--mde-font-size`, …); light
+and dark follow the system.
 
-## Publishing
+## The stored format (Markdown)
 
-Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).
+Paragraphs, `##`–`####` headings, `-` and `1.` lists, `>` quotes, `**bold**`, `*italic*`, `[text](url)`,
+`![alt](src "caption")` for images and `[[src:ID]]` / `[[quote:ID]]` for citations. Raw HTML is never passed through: if
+it appears in the Markdown it is shown as text. Links keep only `http(s)`, `mailto:`, `#` and relative addresses.
 
-To publish your library to [npm](https://www.npmjs.com):
+See `docs/proposals/` for the decisions behind this.
 
-```sh
-npm publish
+## Tests and checks
+
+```bash
+npm test          # unit tests (the editing tests run in a real Chromium)
+npm run check     # types
+npm run lint
 ```
+
+The first time, the browser tests need Playwright's Chromium: `npx playwright install chromium`.
+
+## Layout
+
+- `src/lib/markdown/`: the Markdown rules (reading, writing, formatting), with no browser needed
+- `src/lib/core/`: the editing surface: serializer, paste cleaner, history, keyboard, controller
+- `src/lib/commands/`: bold/italic/link and block commands (our own, no `execCommand`)
+- `src/lib/ui/`: toolbar and dialogs
+- `src/routes/`: the playground (not part of the package), including the example image endpoint and SQLite table

@@ -15,7 +15,7 @@ const isBlank = (n: Node) => n.nodeType === 3 && !(n.nodeValue ?? '').trim();
 /** Wraps loose inline nodes in a paragraph, in place. */
 function wrapLoose(parent: Element, nodes: Node[], tag: string) {
 	const el = parent.ownerDocument.createElement(tag);
-	nodes[0].before(el);
+	(nodes[0] as ChildNode).before(el);
 	for (const n of nodes) el.append(n);
 }
 

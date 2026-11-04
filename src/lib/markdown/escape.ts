@@ -14,6 +14,7 @@ export function escapeHtml(s: string): string {
  */
 export function safeUrl(raw: string): string | null {
 	const u = raw.trim();
+	// eslint-disable-next-line no-control-regex
 	if (!u || /[\s\u0000-\u001f\u007f]/.test(u)) return null;
 	const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(u);
 	if (scheme) return /^(https?|mailto)$/i.test(scheme[1]) ? u : null;

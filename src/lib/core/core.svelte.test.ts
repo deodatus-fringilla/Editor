@@ -32,7 +32,7 @@ describe('serializer', () => {
 		expect(domToMarkdown(surface('<p>a<strong> b </strong>c</p><p><br></p>'))).toBe('a **b** c');
 	});
 	it('ignores zero-width placeholders and non-breaking spaces', () => {
-		expect(domToMarkdown(surface('<p>a b<strong>​</strong></p>'))).toBe('a b');
+		expect(domToMarkdown(surface('<p>a\u00a0b<strong>\u200b</strong></p>'))).toBe('a b');
 	});
 	it('drops links with unsafe addresses', () => {
 		expect(domToMarkdown(surface('<p><a href="javascript:alert(1)">x</a></p>'))).toBe('x');

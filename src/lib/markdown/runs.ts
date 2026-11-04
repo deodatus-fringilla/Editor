@@ -47,8 +47,10 @@ function split(runs: Run[], from: number, to: number) {
 			if (!r.atom || end <= from || pos >= to) {
 				// untouched, or outside
 			}
-			if (r.atom && pos >= from && end <= to)
-				(first < 0 && (first = out.length), (last = out.length));
+			if (r.atom && pos >= from && end <= to) {
+				if (first < 0) first = out.length;
+				last = out.length;
+			}
 			out.push(r);
 		} else {
 			const parts = [
@@ -58,7 +60,10 @@ function split(runs: Run[], from: number, to: number) {
 			];
 			parts.forEach((t, k) => {
 				if (!t) return;
-				if (k === 1) (first < 0 && (first = out.length), (last = out.length));
+				if (k === 1) {
+					if (first < 0) first = out.length;
+					last = out.length;
+				}
 				out.push({ ...r, t });
 			});
 		}
@@ -68,12 +73,19 @@ function split(runs: Run[], from: number, to: number) {
 }
 
 /** Bold or italic: switched off when everything in the range already has it, otherwise switched on. */
-export function toggleFormat(runs: Run[], from: number, to: number, key: 'b' | 'i'): Run[] {
+export function toggleFormat(
+	runs: Run[],
+	from: number,
+	to: number,
+	key: 'b' | 'i',
+	force?: boolean
+): Run[] {
 	const { runs: cut, first, last } = split(runs, from, to);
 	if (first < 0) return runs;
 	const inside = cut.slice(first, last + 1).filter((r) => !r.atom);
 	const allOn = inside.length > 0 && inside.every((r) => r[key]);
-	for (const r of inside) r[key] = !allOn;
+	const on = force ?? !allOn;
+	for (const r of inside) r[key] = on;
 	return mergeRuns(cut);
 }
 
@@ -104,7 +116,9 @@ export function tidyRuns(runs: Run[]): Run[] {
 				? r
 				: {
 						...r,
-						t: r.t.replace(/[ \t\r\n ​]+/g, (m) => (m.includes('​') && m.trim() === '​' ? '' : ' '))
+						t: r.t.replace(/[ \t\r\n\u00a0\u200b]+/g, (m) =>
+							m.includes('\u200b') && m.trim() === '\u200b' ? '' : ' '
+						)
 					}
 		)
 	);

@@ -1,0 +1,129 @@
+/** Every piece of text the editor shows. The host can pass its own (for example from its translation system). */
+export interface Labels {
+	editor: string;
+	toolbar: string;
+	undo: string;
+	redo: string;
+	bold: string;
+	italic: string;
+	link: string;
+	paragraph: string;
+	heading2: string;
+	heading3: string;
+	heading4: string;
+	bulletList: string;
+	numberedList: string;
+	quote: string;
+	image: string;
+	citation: string;
+	source: string;
+	quoteCitation: string;
+	linkTitle: string;
+	linkAddress: string;
+	linkInvalid: string;
+	apply: string;
+	removeLink: string;
+	cancel: string;
+	imageTitle: string;
+	imageAlt: string;
+	imageAltHelp: string;
+	imageCaption: string;
+	insert: string;
+	update: string;
+	removeImage: string;
+	removeImageTitle: string;
+	removeFromArticle: string;
+	removeFromArticleHelp: string;
+	removeAndDelete: string;
+	removeAndDeleteHelp: string;
+	uploading: string;
+	uploadFailed: string;
+	deleteFailed: string;
+	citationLabel: (kind: 'src' | 'quote', id: number) => string;
+}
+
+export const labelsEn: Labels = {
+	editor: 'Article text',
+	toolbar: 'Formatting',
+	undo: 'Undo',
+	redo: 'Redo',
+	bold: 'Bold',
+	italic: 'Italic',
+	link: 'Link',
+	paragraph: 'Normal text',
+	heading2: 'Heading 2',
+	heading3: 'Heading 3',
+	heading4: 'Heading 4',
+	bulletList: 'Bulleted list',
+	numberedList: 'Numbered list',
+	quote: 'Quote',
+	image: 'Insert image',
+	citation: 'Insert citation',
+	source: 'Source',
+	quoteCitation: 'Quote',
+	linkTitle: 'Link',
+	linkAddress: 'Web address',
+	linkInvalid: 'Use an address starting with https://, http://, mailto: or /',
+	apply: 'Apply',
+	removeLink: 'Remove link',
+	cancel: 'Cancel',
+	imageTitle: 'Image',
+	imageAlt: 'Alternative text',
+	imageAltHelp: 'Describe the picture for readers who cannot see it. Required.',
+	imageCaption: 'Caption',
+	insert: 'Insert',
+	update: 'Save',
+	removeImage: 'Remove image',
+	removeImageTitle: 'Remove this image?',
+	removeFromArticle: 'Remove from this article only',
+	removeFromArticleHelp: 'The file and its record are kept.',
+	removeAndDelete: 'Remove and delete the file',
+	removeAndDeleteHelp: 'The file and its database record are deleted for good.',
+	uploading: 'Uploading image…',
+	uploadFailed: 'The image could not be uploaded.',
+	deleteFailed: 'The image was removed from the article, but the file could not be deleted.',
+	citationLabel: (kind, id) => `${kind === 'src' ? 'Source' : 'Quote'} ${id}`
+};
+
+export const labelsPl: Labels = {
+	editor: 'Tekst artykułu',
+	toolbar: 'Formatowanie',
+	undo: 'Cofnij',
+	redo: 'Ponów',
+	bold: 'Pogrubienie',
+	italic: 'Kursywa',
+	link: 'Link',
+	paragraph: 'Zwykły tekst',
+	heading2: 'Nagłówek 2',
+	heading3: 'Nagłówek 3',
+	heading4: 'Nagłówek 4',
+	bulletList: 'Lista punktowana',
+	numberedList: 'Lista numerowana',
+	quote: 'Cytat blokowy',
+	image: 'Wstaw obraz',
+	citation: 'Wstaw odwołanie do źródła',
+	source: 'Źródło',
+	quoteCitation: 'Cytat',
+	linkTitle: 'Link',
+	linkAddress: 'Adres strony',
+	linkInvalid: 'Podaj adres zaczynający się od https://, http://, mailto: lub /',
+	apply: 'Zastosuj',
+	removeLink: 'Usuń link',
+	cancel: 'Anuluj',
+	imageTitle: 'Obraz',
+	imageAlt: 'Tekst alternatywny',
+	imageAltHelp: 'Opisz obraz dla czytelników, którzy go nie widzą. Wymagane.',
+	imageCaption: 'Podpis',
+	insert: 'Wstaw',
+	update: 'Zapisz',
+	removeImage: 'Usuń obraz',
+	removeImageTitle: 'Usunąć ten obraz?',
+	removeFromArticle: 'Usuń tylko z tego artykułu',
+	removeFromArticleHelp: 'Plik i jego wpis zostają.',
+	removeAndDelete: 'Usuń i skasuj plik',
+	removeAndDeleteHelp: 'Plik i jego wpis w bazie zostaną skasowane na stałe.',
+	uploading: 'Wysyłanie obrazu…',
+	uploadFailed: 'Nie udało się wysłać obrazu.',
+	deleteFailed: 'Obraz usunięto z artykułu, ale nie udało się skasować pliku.',
+	citationLabel: (kind, id) => `${kind === 'src' ? 'Źródło' : 'Cytat'} ${id}`
+};

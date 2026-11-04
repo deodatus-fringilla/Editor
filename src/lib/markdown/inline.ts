@@ -79,13 +79,22 @@ export function renderInline(src: string, ctx: InlineContext): string {
 		const c = src[i];
 		if (c === '\\') {
 			const n = src[i + 1];
-			if (n === '\n') ((out += '<br>'), (i += 2));
-			else if (n !== undefined && ESCAPABLE.test(n)) ((out += escapeHtml(n)), (i += 2));
-			else ((out += '\\'), i++);
+			if (n === '\n') {
+				out += '<br>';
+				i += 2;
+			} else if (n !== undefined && ESCAPABLE.test(n)) {
+				out += escapeHtml(n);
+				i += 2;
+			} else {
+				out += '\\';
+				i++;
+			}
 			continue;
 		}
-		if (c === '\n') ((out += ' '), i++);
-		else if (c === '[' && src[i + 1] === '[' && CITE.test(src.slice(i, i + 24))) {
+		if (c === '\n') {
+			out += ' ';
+			i++;
+		} else if (c === '[' && src[i + 1] === '[' && CITE.test(src.slice(i, i + 24))) {
 			const m = CITE.exec(src.slice(i, i + 24))!;
 			out += ctx.cite(m[1] as 'src' | 'quote', Number(m[2]));
 			i += m[0].length;
@@ -108,8 +117,13 @@ export function renderInline(src: string, ctx: InlineContext): string {
 				}
 			}
 			const link = c === '[' ? renderLink(src, i, ctx) : null;
-			if (link) ((out += link.html), (i = link.next));
-			else ((out += escapeHtml(c)), i++);
+			if (link) {
+				out += link.html;
+				i = link.next;
+			} else {
+				out += escapeHtml(c);
+				i++;
+			}
 		}
 	}
 	return out;

@@ -72,7 +72,7 @@ function wrap(doc: Document, tag: string, into: Node): HTMLElement {
 function copy(src: Node, into: Node, doc: Document): void {
 	for (const n of Array.from(src.childNodes)) {
 		if (n.nodeType === 3) {
-			const text = (n.nodeValue ?? '').replace(/[\s ]+/g, ' ');
+			const text = (n.nodeValue ?? '').replace(/[\s\u00a0]+/g, ' ');
 			if (text) into.appendChild(doc.createTextNode(text));
 			continue;
 		}

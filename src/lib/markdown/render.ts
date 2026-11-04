@@ -33,7 +33,8 @@ export function figureHtml(o: {
 }): string {
 	const img = `<img src="${escapeHtml(o.src)}" alt="${escapeHtml(o.alt)}"${o.mode === 'publish' ? ' loading="lazy"' : ''}>`;
 	const cap = o.caption ? `<figcaption>${escapeHtml(o.caption)}</figcaption>` : '';
-	const attrs = o.mode === 'editor' ? ' class="mde-figure" contenteditable="false"' : '';
+	const attrs =
+		o.mode === 'editor' ? ' class="mde-figure" contenteditable="false" tabindex="0"' : '';
 	return `<figure${attrs}>${img}${cap}</figure>`;
 }
 
@@ -87,13 +88,18 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): s
 			} else if (RE.ul.test(line) || RE.ol.test(line)) {
 				const re = RE.ul.test(line) ? RE.ul : RE.ol;
 				const items: string[] = [];
-				while (i < lines.length && (m = re.exec(lines[i])))
-					(items.push(`<li>${inline(m[1])}</li>`), i++);
+				while (i < lines.length && (m = re.exec(lines[i]))) {
+					items.push(`<li>${inline(m[1])}</li>`);
+					i++;
+				}
 				const tag = re === RE.ul ? 'ul' : 'ol';
 				html.push(`<${tag}>${items.join('')}</${tag}>`);
 			} else if (RE.quote.test(line)) {
 				const inner: string[] = [];
-				while (i < lines.length && (m = RE.quote.exec(lines[i]))) (inner.push(m[1]), i++);
+				while (i < lines.length && (m = RE.quote.exec(lines[i]))) {
+					inner.push(m[1]);
+					i++;
+				}
 				html.push(`<blockquote>${blocks(inner).join('')}</blockquote>`);
 			} else {
 				const para = [line];
