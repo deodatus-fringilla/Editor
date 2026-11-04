@@ -232,45 +232,45 @@
 			if (f) void takeImage(f);
 		}}
 	/>
-</div>
 
-{#if linkDraft}
-	<LinkDialog
-		labels={L}
-		href={linkDraft.href}
-		onapply={(href) => controller?.setLink(href)}
-		onremove={() => controller?.setLink(null)}
-		onclose={closeLink}
-	/>
-{/if}
-{#if imageDraft}
-	{@const draft = imageDraft}
-	<ImageDialog
-		labels={L}
-		src={draft.src}
-		alt={draft.alt}
-		caption={draft.caption}
-		editing={!!draft.figure}
-		{requireAlt}
-		onsubmit={(d) => {
-			try {
-				if (draft.figure) controller?.updateFigure(draft.figure, d);
-				else controller?.insertFigure({ src: draft.src, ...d });
-			} catch {
-				status = L.uploadFailed;
-			}
-		}}
-		onremove={() => draft.figure && askRemove(draft.figure)}
-		onclose={closeImage}
-	/>
-{/if}
-{#if removing}
-	<DeleteImageDialog
-		labels={L}
-		onconfirm={confirmRemove}
-		onclose={() => ((removing = null), controller?.recall())}
-	/>
-{/if}
+	{#if linkDraft}
+		<LinkDialog
+			labels={L}
+			href={linkDraft.href}
+			onapply={(href) => controller?.setLink(href)}
+			onremove={() => controller?.setLink(null)}
+			onclose={closeLink}
+		/>
+	{/if}
+	{#if imageDraft}
+		{@const draft = imageDraft}
+		<ImageDialog
+			labels={L}
+			src={draft.src}
+			alt={draft.alt}
+			caption={draft.caption}
+			editing={!!draft.figure}
+			{requireAlt}
+			onsubmit={(d) => {
+				try {
+					if (draft.figure) controller?.updateFigure(draft.figure, d);
+					else controller?.insertFigure({ src: draft.src, ...d });
+				} catch {
+					status = L.uploadFailed;
+				}
+			}}
+			onremove={() => draft.figure && askRemove(draft.figure)}
+			onclose={closeImage}
+		/>
+	{/if}
+	{#if removing}
+		<DeleteImageDialog
+			labels={L}
+			onconfirm={confirmRemove}
+			onclose={() => ((removing = null), controller?.recall())}
+		/>
+	{/if}
+</div>
 
 <style>
 	.mde {

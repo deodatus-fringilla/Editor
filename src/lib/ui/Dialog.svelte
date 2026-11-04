@@ -27,8 +27,8 @@
 		padding: 1.25rem;
 		border: 1px solid var(--mde-border);
 		border-radius: calc(var(--mde-radius) + 2px);
-		background: var(--mde-bg);
-		color: var(--mde-fg);
+		background: var(--mde-bg, Canvas);
+		color: var(--mde-fg, CanvasText);
 		font-family: var(--mde-ui-font);
 	}
 	.mde-dialog::backdrop {
