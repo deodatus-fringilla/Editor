@@ -28,6 +28,13 @@ export interface Labels {
 	imageAlt: string;
 	imageAltHelp: string;
 	imageCaption: string;
+	placement: string;
+	placeCenter: string;
+	placeLeft: string;
+	placeRight: string;
+	placeFull: string;
+	moveUp: string;
+	moveDown: string;
 	insert: string;
 	update: string;
 	removeImage: string;
@@ -71,6 +78,13 @@ export const labelsEn: Labels = {
 	imageAlt: 'Alternative text',
 	imageAltHelp: 'Describe the picture for readers who cannot see it. Required.',
 	imageCaption: 'Caption',
+	placement: 'Position',
+	placeCenter: 'Centred',
+	placeLeft: 'Left, text wraps',
+	placeRight: 'Right, text wraps',
+	placeFull: 'Full width',
+	moveUp: 'Move up',
+	moveDown: 'Move down',
 	insert: 'Insert',
 	update: 'Save',
 	removeImage: 'Remove image',
@@ -114,6 +128,13 @@ export const labelsPl: Labels = {
 	imageAlt: 'Tekst alternatywny',
 	imageAltHelp: 'Opisz obraz dla czytelników, którzy go nie widzą. Wymagane.',
 	imageCaption: 'Podpis',
+	placement: 'Położenie',
+	placeCenter: 'Na środku',
+	placeLeft: 'Z lewej, tekst opływa',
+	placeRight: 'Z prawej, tekst opływa',
+	placeFull: 'Pełna szerokość',
+	moveUp: 'Przesuń wyżej',
+	moveDown: 'Przesuń niżej',
 	insert: 'Wstaw',
 	update: 'Zapisz',
 	removeImage: 'Usuń obraz',

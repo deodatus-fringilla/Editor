@@ -19,7 +19,9 @@ function figure(el: Element): string | null {
 	if (!img || !src) return null;
 	const caption = el.querySelector('figcaption')?.textContent?.trim() ?? '';
 	const title = caption ? ` "${escapeTitle(caption)}"` : '';
-	return `![${escapeAlt(img.getAttribute('alt') ?? '')}](${encodeUrlForMarkdown(src)}${title})`;
+	const place = el.getAttribute('data-place');
+	const suffix = place === 'left' || place === 'right' || place === 'full' ? `{.${place}}` : '';
+	return `![${escapeAlt(img.getAttribute('alt') ?? '')}](${encodeUrlForMarkdown(src)}${title})${suffix}`;
 }
 
 function list(el: Element): string | null {

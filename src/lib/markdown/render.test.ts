@@ -75,6 +75,24 @@ describe('images', () => {
 	});
 });
 
+describe('image placement', () => {
+	it('reads left, right and full', () => {
+		expect(pub('![A](/a.png "Cap"){.left}')).toContain('<figure data-place="left">');
+		expect(pub('![A](/a.png){.right}')).toContain('<figure data-place="right">');
+		expect(pub('![A](/a.png){.full}')).toContain('<figure data-place="full">');
+	});
+	it('centres by default and ignores unknown placements', () => {
+		expect(pub('![A](/a.png)')).toContain('<figure>');
+		expect(pub('![A](/a.png){.bogus}')).toContain('<figure>');
+		expect(pub('![A](/a.png){.center}')).toContain('<figure>');
+	});
+	it('marks the editing surface too', () => {
+		expect(renderMarkdown('![A](/a.png){.left}', { mode: 'editor' })).toContain(
+			'data-place="left"'
+		);
+	});
+});
+
 describe('citations', () => {
 	it('numbers citations in order and lists them for readers', () => {
 		const html = pub('One[[src:12]] two[[quote:3]] again[[src:12]]');

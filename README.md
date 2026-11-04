@@ -72,7 +72,7 @@ Uploaded test images go to `static/uploads/` and are recorded in `data/editor.db
 	onPickCitation={async () => ({ kind: 'src', id: 12 })}
 />
 
-<Preview value={markdown} />
+<Preview value={markdown} columns={2} />
 ```
 
 | Prop                                       |                                                                                                                                                |
@@ -92,7 +92,7 @@ and dark follow the system.
 ## The stored format (Markdown)
 
 Paragraphs, `##`–`####` headings, `-` and `1.` lists, `>` quotes, `**bold**`, `*italic*`, `[text](url)`,
-`![alt](src "caption")` for images and `[[src:ID]]` / `[[quote:ID]]` for citations. Raw HTML is never passed through: if
+`![alt](src "caption")` for images (add `{.left}`, `{.right}` or `{.full}` for placement) and `[[src:ID]]` / `[[quote:ID]]` for citations. Raw HTML is never passed through: if
 it appears in the Markdown it is shown as text. Links keep only `http(s)`, `mailto:`, `#` and relative addresses.
 
 See `docs/proposals/` for the decisions behind this.

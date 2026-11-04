@@ -3,6 +3,8 @@ import { renderMarkdown } from '../markdown/render';
 import { domToMarkdown } from './serialize';
 import { normalizeRoot } from './normalize';
 import { sanitizeHtml, markdownToFragment } from './sanitize';
+import { EditorController } from './controller';
+import { labelsEn } from './labels';
 
 const surface = (html: string) => {
 	const el = document.createElement('div');
@@ -18,6 +20,9 @@ describe('Markdown survives a trip through the editing surface', () => {
 		'> quoted\n>\n> second paragraph',
 		'A [link](https://example.pl/a%20b) and a citation[[src:12]] and another[[quote:3]].',
 		'![An alt text](/uploads/a.png "A caption")',
+		'![Left](/a.png "Cap"){.left}',
+		'![Right](/a.png){.right}',
+		'![Full](/a.png "Wide"){.full}',
 		'Line one\\\nline two',
 		'2 \\* 3 \\[not a link\\] snake\\_case',
 		'\\# not a heading\n\n\\- not a list\n\n1\\. not a number',
@@ -123,5 +128,54 @@ describe('plain-text paste is read as Markdown', () => {
 	it('does not let raw HTML through', () => {
 		const frag = markdownToFragment('<img src=x onerror=alert(1)>');
 		expect(frag.querySelector('img')).toBeNull();
+	});
+});
+
+describe('image placement and moving', () => {
+	const make = (md: string) => {
+		const root = document.createElement('div');
+		root.contentEditable = 'true';
+		root.innerHTML = renderMarkdown(md, { mode: 'editor' });
+		document.body.append(root);
+		normalizeRoot(root);
+		const out: string[] = [];
+		const k = new EditorController(root, {
+			labels: () => labelsEn,
+			emit: (m) => out.push(m),
+			state: () => {},
+			imageFile: () => {},
+			removeFigure: () => {},
+			openLink: () => {}
+		});
+		return { root, k, out };
+	};
+
+	it('changes the placement of an existing image and back', () => {
+		const { root, k, out } = make('one\n\n![A](/a.png "Cap")\n\ntwo');
+		const fig = root.querySelector('figure') as HTMLElement;
+		k.updateFigure(fig, { alt: 'A', caption: 'Cap', place: 'right' });
+		expect(out.at(-1)).toBe('one\n\n![A](/a.png "Cap"){.right}\n\ntwo');
+		k.updateFigure(fig, { alt: 'A', caption: 'Cap', place: 'center' });
+		expect(out.at(-1)).toBe('one\n\n![A](/a.png "Cap")\n\ntwo');
+		root.remove();
+	});
+
+	it('moves an image above or below its neighbour', () => {
+		const { root, k, out } = make('one\n\n![A](/a.png)\n\ntwo');
+		const fig = root.querySelector('figure') as HTMLElement;
+		expect(k.moveFigure(fig, -1)).toBe(true);
+		expect(out.at(-1)).toBe('![A](/a.png)\n\none\n\ntwo');
+		expect(k.moveFigure(fig, 1)).toBe(true);
+		expect(k.moveFigure(fig, 1)).toBe(true);
+		expect(out.at(-1)).toBe('one\n\ntwo\n\n![A](/a.png)');
+		expect(k.moveFigure(fig, 1)).toBe(false);
+		root.remove();
+	});
+
+	it('inserts a new image with a placement', () => {
+		const { root, k, out } = make('text');
+		k.insertFigure({ src: '/x.png', alt: 'X', caption: '', place: 'left' });
+		expect(out.at(-1)).toBe('text\n\n![X](/x.png){.left}');
+		root.remove();
 	});
 });

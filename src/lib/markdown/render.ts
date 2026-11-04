@@ -16,7 +16,7 @@ const RE = {
 	ul: /^[-*+] +(.*)$/,
 	ol: /^\d+[.)] +(.*)$/,
 	quote: /^> ?(.*)$/,
-	image: /^!\[((?:[^\]\\]|\\.)*)\]\(([^\s)]+)(?: "((?:[^"\\]|\\.)*)")?\)$/
+	image: /^!\[((?:[^\]\\]|\\.)*)\]\(([^\s)]+)(?: "((?:[^"\\]|\\.)*)")?\)(?:\{\.([a-z]+)\})?$/
 };
 
 const unescape = (s: string) => s.replace(/\\(.)/g, '$1');
@@ -25,17 +25,23 @@ export function citeChip(kind: 'src' | 'quote', id: number, label: string): stri
 	return `<span class="mde-cite" data-cite="${kind}:${id}" contenteditable="false">${escapeHtml(label)}</span>`;
 }
 
+/** Where an image sits: centred (the default), floated left or right with text around it, or across the full width. */
+export type Placement = 'center' | 'left' | 'right' | 'full';
+export const PLACEMENTS: Placement[] = ['center', 'left', 'right', 'full'];
+
 export function figureHtml(o: {
 	src: string;
 	alt: string;
 	caption: string;
+	place?: Placement;
 	mode: 'editor' | 'publish';
 }): string {
 	const img = `<img src="${escapeHtml(o.src)}" alt="${escapeHtml(o.alt)}"${o.mode === 'publish' ? ' loading="lazy"' : ''}>`;
 	const cap = o.caption ? `<figcaption>${escapeHtml(o.caption)}</figcaption>` : '';
+	const place = o.place && o.place !== 'center' ? ` data-place="${o.place}"` : '';
 	const attrs =
 		o.mode === 'editor' ? ' class="mde-figure" contenteditable="false" tabindex="0"' : '';
-	return `<figure${attrs}>${img}${cap}</figure>`;
+	return `<figure${attrs}${place}>${img}${cap}</figure>`;
 }
 
 function isBlockStart(line: string): boolean {
@@ -81,6 +87,7 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): s
 						src: safeUrl(m[2])!,
 						alt: unescape(m[1]),
 						caption: unescape(m[3] ?? ''),
+						place: PLACEMENTS.includes(m[4] as Placement) ? (m[4] as Placement) : undefined,
 						mode
 					})
 				);

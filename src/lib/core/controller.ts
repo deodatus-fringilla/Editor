@@ -16,7 +16,7 @@ import {
 } from '../commands/inline';
 import { safeUrl } from '../markdown/escape';
 import { ATOM } from '../markdown/runs';
-import { figureHtml, renderMarkdown } from '../markdown/render';
+import { figureHtml, renderMarkdown, type Placement } from '../markdown/render';
 import { leafOf, topBlockOf } from './dom';
 import { runsToDom } from './domRuns';
 import { History } from './history';
@@ -54,6 +54,7 @@ export interface FigureData {
 	src: string;
 	alt: string;
 	caption: string;
+	place?: Placement;
 }
 
 const isBlank = (el: Element) =>
@@ -205,6 +206,8 @@ export class EditorController {
 	updateFigure(fig: HTMLElement, data: Omit<FigureData, 'src'>): void {
 		this.run(() => {
 			fig.querySelector('img')?.setAttribute('alt', data.alt);
+			if (data.place && data.place !== 'center') fig.dataset.place = data.place;
+			else delete fig.dataset.place;
 			let cap = fig.querySelector('figcaption');
 			if (!data.caption) cap?.remove();
 			else {
@@ -212,6 +215,21 @@ export class EditorController {
 				cap.textContent = data.caption;
 			}
 		});
+	}
+
+	/** Moves an image above or below its neighbouring block (empty caret-stop paragraphs are stepped over). */
+	moveFigure(fig: HTMLElement, direction: -1 | 1): boolean {
+		const step = (el: Element | null) =>
+			direction < 0 ? (el?.previousElementSibling ?? null) : (el?.nextElementSibling ?? null);
+		let target = step(fig);
+		while (target && target.tagName === 'P' && isBlank(target)) target = step(target);
+		if (!target) return false;
+		this.run(() => {
+			if (direction < 0) target.before(fig);
+			else target.after(fig);
+			normalizeRoot(this.root);
+		});
+		return true;
 	}
 
 	removeFigure(fig: HTMLElement): void {

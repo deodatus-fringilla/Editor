@@ -8,6 +8,7 @@
 	let lang = $state<'pl' | 'en'>('pl');
 	let tab = $state<'preview' | 'markdown'>('preview');
 	let confirmDelete = $state(true);
+	let twoColumns = $state(false);
 	const labels = $derived(lang === 'pl' ? labelsPl : labelsEn);
 </script>
 
@@ -26,12 +27,15 @@
 			<label class="check"
 				><input type="checkbox" bind:checked={confirmDelete} /> Ask how to delete images</label
 			>
+			<label class="check"
+				><input type="checkbox" bind:checked={twoColumns} /> Two columns (preview)</label
+			>
 			<button type="button" onclick={() => (value = '')}>Clear</button>
 			<button type="button" onclick={() => (value = sample)}>Sample</button>
 		</div>
 	</header>
 
-	<div class="cols">
+	<div class="cols" class:wide={twoColumns}>
 		<section aria-label="Editor">
 			<Editor
 				bind:value
@@ -57,6 +61,7 @@
 				{#if tab === 'preview'}<Preview
 						{value}
 						citationLabel={labels.citationLabel}
+						columns={twoColumns ? 2 : 1}
 					/>{:else}<SourcePane bind:value label="Markdown" />{/if}
 			</div>
 		</section>
@@ -121,7 +126,7 @@
 		grid-template-columns: 1fr;
 	}
 	@media (min-width: 64rem) {
-		.cols {
+		.cols:not(.wide) {
 			grid-template-columns: 1fr 1fr;
 			align-items: start;
 		}

@@ -7,6 +7,7 @@
 	import ImageDialog from './ui/ImageDialog.svelte';
 	import LinkDialog from './ui/LinkDialog.svelte';
 	import Toolbar, { type Command } from './ui/Toolbar.svelte';
+	import type { Placement } from './markdown/render';
 
 	export interface UploadedImage {
 		src: string;
@@ -67,7 +68,13 @@
 	let status = $state('');
 	let lastEmitted: string | undefined;
 
-	type Draft = { src: string; alt: string; caption: string; figure: HTMLElement | null };
+	type Draft = {
+		src: string;
+		alt: string;
+		caption: string;
+		place: Placement;
+		figure: HTMLElement | null;
+	};
 	let linkDraft = $state<{ href: string } | null>(null);
 	let imageDraft = $state<Draft | null>(null);
 	let removing = $state<HTMLElement | null>(null);
@@ -111,7 +118,13 @@
 		status = L.uploading;
 		try {
 			const r = await onUploadImage(file);
-			imageDraft = { src: r.src, alt: r.alt ?? '', caption: r.caption ?? '', figure: null };
+			imageDraft = {
+				src: r.src,
+				alt: r.alt ?? '',
+				caption: r.caption ?? '',
+				place: 'center',
+				figure: null
+			};
 			status = '';
 		} catch {
 			status = L.uploadFailed;
@@ -125,6 +138,7 @@
 			src: img?.getAttribute('src') ?? '',
 			alt: img?.getAttribute('alt') ?? '',
 			caption: fig.querySelector('figcaption')?.textContent ?? '',
+			place: (fig.dataset.place as Placement | undefined) ?? 'center',
 			figure: fig
 		};
 	}
@@ -179,7 +193,10 @@
 
 	function onSurfaceKey(e: KeyboardEvent) {
 		const fig = (e.target as Element).closest?.('figure');
-		if (fig && e.target === fig && e.key === 'Enter') {
+		if (fig && e.target === fig && e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+			e.preventDefault();
+			if (controller?.moveFigure(fig as HTMLElement, e.key === 'ArrowUp' ? -1 : 1)) fig.focus();
+		} else if (fig && e.target === fig && e.key === 'Enter') {
 			e.preventDefault();
 			editFigure(fig as HTMLElement);
 		} else controller?.keydown(e);
@@ -249,6 +266,7 @@
 			src={draft.src}
 			alt={draft.alt}
 			caption={draft.caption}
+			place={draft.place}
 			editing={!!draft.figure}
 			{requireAlt}
 			onsubmit={(d) => {
@@ -259,6 +277,7 @@
 					status = L.uploadFailed;
 				}
 			}}
+			onmove={(dir) => draft.figure && controller?.moveFigure(draft.figure, dir)}
 			onremove={() => draft.figure && askRemove(draft.figure)}
 			onclose={closeImage}
 		/>
@@ -305,6 +324,7 @@
 		font-size: var(--mde-font-size);
 		line-height: var(--mde-line-height);
 		overflow-wrap: anywhere;
+		display: flow-root;
 	}
 	.mde-surface:focus-visible {
 		box-shadow: inset 0 0 0 2px var(--mde-accent);
@@ -349,6 +369,7 @@
 		padding-left: 1.6em;
 	}
 	.mde-surface :global(blockquote) {
+		display: flow-root;
 		margin: 0 0 0.9em;
 		padding-left: 1em;
 		border-left: 3px solid var(--mde-border);
@@ -383,6 +404,36 @@
 	.mde-surface :global(figure:focus-visible) {
 		border-color: var(--mde-accent);
 		outline: none;
+	}
+	.mde-surface :global(figure[data-place='left']),
+	.mde-surface :global(figure[data-place='right']) {
+		width: 45%;
+		margin-top: 0.3em;
+		margin-bottom: 0.6em;
+	}
+	.mde-surface :global(figure[data-place='left']) {
+		float: left;
+		margin-right: 1.25em;
+		margin-left: 0;
+	}
+	.mde-surface :global(figure[data-place='right']) {
+		float: right;
+		margin-left: 1.25em;
+		margin-right: 0;
+	}
+	.mde-surface :global(figure[data-place='full']) {
+		clear: both;
+	}
+	.mde-surface :global(figure[data-place='full'] img) {
+		width: 100%;
+	}
+	@media (max-width: 36rem) {
+		.mde-surface :global(figure[data-place='left']),
+		.mde-surface :global(figure[data-place='right']) {
+			float: none;
+			width: auto;
+			margin-inline: 0;
+		}
 	}
 	.mde-surface :global(figure img) {
 		max-width: 100%;

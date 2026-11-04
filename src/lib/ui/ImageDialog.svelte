@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Labels } from '../core/labels';
+	import type { Placement } from '../markdown/render';
 	import Dialog from './Dialog.svelte';
 
 	let {
@@ -7,9 +8,11 @@
 		src,
 		alt,
 		caption,
+		place,
 		editing,
 		requireAlt,
 		onsubmit,
+		onmove,
 		onremove,
 		onclose
 	}: {
@@ -17,9 +20,11 @@
 		src: string;
 		alt: string;
 		caption: string;
+		place: Placement;
 		editing: boolean;
 		requireAlt: boolean;
-		onsubmit: (data: { alt: string; caption: string }) => void;
+		onsubmit: (data: { alt: string; caption: string; place: Placement }) => void;
+		onmove: (direction: -1 | 1) => void;
 		onremove: () => void;
 		onclose: () => void;
 	} = $props();
@@ -28,6 +33,14 @@
 	let altText = $state(alt);
 	// svelte-ignore state_referenced_locally
 	let captionText = $state(caption);
+	// svelte-ignore state_referenced_locally
+	let placeChoice = $state<Placement>(place);
+	const placements = $derived<[Placement, string][]>([
+		['center', labels.placeCenter],
+		['left', labels.placeLeft],
+		['right', labels.placeRight],
+		['full', labels.placeFull]
+	]);
 	let form: HTMLFormElement;
 	const ready = $derived(!requireAlt || altText.trim().length > 0);
 	const close = () => (form.closest('dialog') as HTMLDialogElement).close();
@@ -36,7 +49,7 @@
 		e.preventDefault();
 		if (!ready) return;
 		close();
-		onsubmit({ alt: altText.trim(), caption: captionText.trim() });
+		onsubmit({ alt: altText.trim(), caption: captionText.trim(), place: placeChoice });
 	}
 </script>
 
@@ -59,6 +72,21 @@
 			{labels.imageCaption}
 			<input type="text" bind:value={captionText} />
 		</label>
+		<fieldset class="place">
+			<legend>{labels.placement}</legend>
+			{#each placements as [value, text] (value)}
+				<label class:on={placeChoice === value}>
+					<input type="radio" name="mde-place" {value} bind:group={placeChoice} />
+					{text}
+				</label>
+			{/each}
+		</fieldset>
+		{#if editing}
+			<div class="move">
+				<button type="button" onclick={() => onmove(-1)}>↑ {labels.moveUp}</button>
+				<button type="button" onclick={() => onmove(1)}>↓ {labels.moveDown}</button>
+			</div>
+		{/if}
 		<div class="actions">
 			{#if editing}
 				<button type="button" class="danger" onclick={() => (close(), onremove())}
@@ -74,6 +102,54 @@
 </Dialog>
 
 <style>
+	.place {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.375rem;
+		margin: 0 0 0.75rem;
+		padding: 0;
+		border: 0;
+	}
+	.place legend {
+		margin-bottom: 0.25rem;
+		padding: 0;
+		font-size: 0.875rem;
+		font-weight: 600;
+	}
+	.place label {
+		display: inline-flex;
+		align-items: center;
+		margin: 0;
+		padding: 0.375rem 0.625rem;
+		border: 1px solid var(--mde-border);
+		border-radius: 0.375rem;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		cursor: pointer;
+	}
+	.place label.on {
+		border-color: var(--mde-accent);
+		background: var(--mde-accent-soft);
+		color: var(--mde-accent-fg);
+	}
+	.place input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+	.place label:has(input:focus-visible) {
+		outline: 2px solid var(--mde-accent);
+		outline-offset: 1px;
+	}
+	.move {
+		display: flex;
+		gap: 0.375rem;
+		margin-bottom: 0.25rem;
+	}
+	.move button {
+		font-size: 0.8125rem;
+		padding: 0.3rem 0.6rem;
+	}
 	.preview {
 		display: block;
 		max-width: 100%;

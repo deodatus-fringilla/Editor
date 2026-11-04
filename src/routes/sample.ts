@@ -12,4 +12,8 @@ Pierwszy akapit z **pogrubieniem**, *kursywą* i [linkiem](https://example.com).
 
 1. Pierwszy punkt
 2. Drugi punkt
+
+Drugi akapit, żeby było widać, jak tekst układa się w kolumnach. Czasopismo w układzie magazynowym prowadzi czytelnika od pierwszej kolumny do drugiej, a obrazy mogą stać obok tekstu albo rozciągać się na całą szerokość strony.
+
+Trzeci akapit: dłuższy tekst pozwala sprawdzić, czy nagłówki, cytaty i przypisy zachowują się dobrze na granicy kolumn. Dodaj obraz i ustaw jego położenie w oknie obrazu.
 `;

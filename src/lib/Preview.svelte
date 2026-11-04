@@ -5,15 +5,22 @@
 	let {
 		value,
 		citationLabel,
+		columns = 1,
 		class: className = ''
-	}: { value: string; citationLabel?: RenderOptions['citationLabel']; class?: string } = $props();
+	}: {
+		value: string;
+		citationLabel?: RenderOptions['citationLabel'];
+		/** 1 for a single column, 2 for a magazine-style layout where the text flows from one column into the next. */
+		columns?: 1 | 2;
+		class?: string;
+	} = $props();
 
 	// The renderer escapes all text, shows raw HTML as text and keeps only safe links, so this HTML is safe to insert.
 	const html = $derived(renderMarkdown(value, { mode: 'publish', citationLabel }));
 </script>
 
 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-<article class="mde-article {className}">{@html html}</article>
+<article class="mde-article {className}" class:cols2={columns === 2}>{@html html}</article>
 
 <style>
 	.mde-article {
@@ -48,6 +55,7 @@
 		padding-left: 1.6em;
 	}
 	.mde-article :global(blockquote) {
+		display: flow-root;
 		margin: 0 0 1em;
 		padding-left: 1em;
 		border-left: 3px solid currentColor;
@@ -55,6 +63,66 @@
 	}
 	.mde-article :global(a) {
 		color: var(--mde-accent, #1d4ed8);
+	}
+	.mde-article {
+		display: flow-root;
+	}
+	.mde-article :global(figure[data-place='left']),
+	.mde-article :global(figure[data-place='right']) {
+		width: 45%;
+		margin-top: 0.3em;
+		margin-bottom: 0.6em;
+	}
+	.mde-article :global(figure[data-place='left']) {
+		float: left;
+		margin-right: 1.25em;
+		margin-left: 0;
+	}
+	.mde-article :global(figure[data-place='right']) {
+		float: right;
+		margin-left: 1.25em;
+		margin-right: 0;
+	}
+	.mde-article :global(figure[data-place='full']) {
+		clear: both;
+	}
+	.mde-article :global(figure[data-place='full'] img) {
+		width: 100%;
+	}
+	@media (max-width: 36rem) {
+		.mde-article :global(figure[data-place='left']),
+		.mde-article :global(figure[data-place='right']) {
+			float: none;
+			width: auto;
+			margin-inline: 0;
+		}
+	}
+
+	/* Magazine layout: one text that flows from the first column into the second. */
+	@media (min-width: 48rem) {
+		.cols2 {
+			column-count: 2;
+			column-gap: 2.5rem;
+			column-rule: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+		}
+		.cols2 :global(p) {
+			orphans: 2;
+			widows: 2;
+		}
+		.cols2 :global(h2),
+		.cols2 :global(h3),
+		.cols2 :global(h4) {
+			break-after: avoid;
+		}
+		.cols2 :global(figure),
+		.cols2 :global(blockquote),
+		.cols2 :global(li) {
+			break-inside: avoid;
+		}
+		.cols2 :global(figure[data-place='full']),
+		.cols2 :global(.footnotes) {
+			column-span: all;
+		}
 	}
 	.mde-article :global(figure) {
 		margin: 1.5em 0;
