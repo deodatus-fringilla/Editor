@@ -1,6 +1,6 @@
 # Proposal 001: Editor architecture
 
-Status: proposed
+Status: accepted
 
 ## Goal
 
@@ -33,7 +33,11 @@ A standalone, importable Svelte 5 component: a simple HTML editor for a publishi
 4. Images: upload callback, drag/drop and paste, figure and caption, with the playground endpoint and SQLite table.
 5. Polish: undo/redo, keyboard shortcuts, accessibility, CSS theming through variables.
 
-## Open questions
+## Decisions
 
-- Are the formatting needs above enough, or are tables, embeds or text alignment also required?
-- Should deleting an image in the editor also delete the file and its database row? Default: no, since the same image may be used in other articles.
+- **Formatting set:** the list above is enough. No tables, embeds or text alignment.
+- **Deleting an image:** when the user removes an image from the article, the editor asks how to delete it:
+  - remove from this article only (file and database row are kept), or
+  - remove from the article and also delete the file and its database row.
+
+  The component shows the question and calls an optional `onDeleteImage(src)` callback only for the second choice. The host (playground endpoint) does the actual file and SQLite deletion. Without the callback, only the first choice is offered.
