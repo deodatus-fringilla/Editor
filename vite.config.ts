@@ -27,7 +27,12 @@ export default defineConfig({
 					name: 'client',
 					browser: {
 						enabled: true,
-						provider: playwright(),
+						provider: playwright({
+							// Lets a machine with a pre-installed Chromium (e.g. a cloud sandbox) point the tests at it.
+							launchOptions: process.env.CHROMIUM_PATH
+								? { executablePath: process.env.CHROMIUM_PATH, args: ['--no-sandbox'] }
+								: {}
+						}),
 						instances: [{ browser: 'chromium', headless: true }]
 					},
 					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
