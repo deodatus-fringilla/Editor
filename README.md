@@ -33,14 +33,17 @@ Uploaded test images go to `static/uploads/` and are recorded in `data/editor.db
 
 ## What it does
 
-|             |                                                                                                         |
-| ----------- | ------------------------------------------------------------------------------------------------------- |
-| Text        | bold, italic, links, headings 2–4, bulleted and numbered lists, block quotes                            |
-| Images      | pick a file, paste or drag one in; alt text (required) and caption; click an image to edit it           |
-| Citations   | `[[src:12]]` and `[[quote:3]]` show as chips in the editor and as numbered footnotes for readers        |
-| Paste       | Word, Google Docs and web pages are cleaned to the supported formatting; plain text is read as Markdown |
-| Undo / redo | its own history (the browser's is not used)                                                             |
-| Languages   | Polish and English labels included; the host can pass any labels                                        |
+|                 |                                                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| Text            | bold, italic, links, headings 2–4, bulleted and numbered lists, block quotes, separator lines                   |
+| Kept as written | tables, code blocks and images from addresses that are not allowed show as locked boxes and are saved unchanged |
+| Images          | pick a file, paste or drag one in; alt text (required) and caption; click an image to edit it                   |
+| Citations       | `[[src:12]]` and `[[quote:3]]` show as chips in the editor and as numbered footnotes for readers                |
+| Paste           | Word, Google Docs and web pages are cleaned to the supported formatting; plain text is read as Markdown         |
+| Undo / redo     | its own history (the browser's is not used)                                                                     |
+| Copy and paste  | inside the editor, citations and images are kept; other programs get clean HTML and plain text                  |
+| Read-only       | `readonly` shows the text without allowing changes (copying still works)                                        |
+| Languages       | Polish and English labels included; the host can pass any labels                                                |
 
 ### Keyboard shortcuts
 
@@ -84,18 +87,28 @@ Uploaded test images go to `static/uploads/` and are recorded in `data/editor.db
 | `onPickCitation()`                         | optional. Returns `{ kind: 'src' \| 'quote', id }`, or `null`. Without it the citation button is hidden.                                       |
 | `labels`                                   | any of the texts (see `labelsEn`, `labelsPl`)                                                                                                  |
 | `requireAlt`                               | default `true`: an image needs alt text                                                                                                        |
+| `allowImage(src)`                          | which image addresses may appear; default: only this site's (starting with `/`)                                                                |
 | `readonly`, `placeholder`, `lang`, `class` | as expected                                                                                                                                    |
+
+While typing, `value` is updated after a short pause (immediately after any command and when the editor loses
+focus). Before saving from a keyboard shortcut, call `flush()` on the component (`bind:this={editor}`, then
+`editor.flush()`).
+
+`Preview` also takes `columns`, `allowImage`, `idPrefix` (footnote ids, one per article on a page) and `backLabel`.
 
 Colours and fonts are CSS variables (`--mde-bg`, `--mde-fg`, `--mde-accent`, `--mde-font`, `--mde-font-size`, …); light
 and dark follow the system.
 
 ## The stored format (Markdown)
 
-Paragraphs, `##`–`####` headings, `-` and `1.` lists, `>` quotes, `**bold**`, `*italic*`, `[text](url)`,
+Paragraphs, `##`–`####` headings (`#` counts as `##`), `---` separators, `-` and `1.` lists, `>` quotes, `**bold**`, `*italic*`, `[text](url)`,
 `![alt](src "caption")` for images (add `{.left}`, `{.right}` or `{.full}` for placement) and `[[src:ID]]` / `[[quote:ID]]` for citations. Raw HTML is never passed through: if
 it appears in the Markdown it is shown as text. Links keep only `http(s)`, `mailto:`, `#` and relative addresses.
 
-See `docs/proposals/` for the decisions behind this.
+Tables and fenced code blocks are kept as written. Links keep only `http(s)`, `mailto:`, `/paths` and `#anchors`, the
+same rule as the Lemiesz renderer.
+
+See `docs/proposals/` for the decisions behind this, and `docs/audits/` for the quality audit.
 
 ## Tests and checks
 
