@@ -184,7 +184,7 @@
 		border-bottom: 1px solid var(--mde-border);
 		background: var(--mde-toolbar-bg);
 		position: sticky;
-		top: 0;
+		top: var(--mde-toolbar-top, 0);
 		z-index: 2;
 		border-radius: var(--mde-radius) var(--mde-radius) 0 0;
 	}

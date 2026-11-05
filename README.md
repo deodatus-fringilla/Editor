@@ -78,17 +78,20 @@ Uploaded test images go to `static/uploads/` and are recorded in `data/editor.db
 <Preview value={markdown} columns={2} />
 ```
 
-| Prop                                       |                                                                                                                                                |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `value` (bindable)                         | the article as Markdown                                                                                                                        |
-| `onchange(markdown)`                       | called after each change                                                                                                                       |
-| `onUploadImage(file)`                      | stores the image and returns `{ src, alt?, caption? }`. Without it the image button is hidden. The component never assumes where images live.  |
-| `onDeleteImage(src)`                       | optional. When given, removing an image asks: remove from this article only, or also delete the file. It is called only for the second choice. |
-| `onPickCitation()`                         | optional. Returns `{ kind: 'src' \| 'quote', id }`, or `null`. Without it the citation button is hidden.                                       |
-| `labels`                                   | any of the texts (see `labelsEn`, `labelsPl`)                                                                                                  |
-| `requireAlt`                               | default `true`: an image needs alt text                                                                                                        |
-| `allowImage(src)`                          | which image addresses may appear; default: only this site's (starting with `/`)                                                                |
-| `readonly`, `placeholder`, `lang`, `class` | as expected                                                                                                                                    |
+| Prop                                       |                                                                                                                                                                                                                                     |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `value` (bindable)                         | the article as Markdown                                                                                                                                                                                                             |
+| `onchange(markdown)`                       | called after each change                                                                                                                                                                                                            |
+| `onUploadImage(file)`                      | stores the image and returns `{ src, alt?, caption? }`. Without it the image button is hidden. The component never assumes where images live.                                                                                       |
+| `onPickImage(file?)`                       | for a host with its own image library: called by the image button (no file) and when an image file is pasted or dropped (with the file); returns `{ src, alt?, caption? }` or `null` if cancelled. Used instead of `onUploadImage`. |
+| `altEditable`                              | default `true`; `false` when the host owns the description (alt text): it is then shown, not edited                                                                                                                                 |
+| `placements`                               | which image positions the dialog offers; default all four (`'center'`, `'left'`, `'right'`, `'full'`)                                                                                                                               |
+| `onDeleteImage(src)`                       | optional. When given, removing an image asks: remove from this article only, or also delete the file. It is called only for the second choice.                                                                                      |
+| `onPickCitation()`                         | optional. Returns `{ kind: 'src' \| 'quote', id }`, or `null`. Without it the citation button is hidden.                                                                                                                            |
+| `labels`                                   | any of the texts (see `labelsEn`, `labelsPl`)                                                                                                                                                                                       |
+| `requireAlt`                               | default `true`: an image needs alt text                                                                                                                                                                                             |
+| `allowImage(src)`                          | which image addresses may appear; default: only this site's (starting with `/`)                                                                                                                                                     |
+| `readonly`, `placeholder`, `lang`, `class` | as expected                                                                                                                                                                                                                         |
 
 While typing, `value` is updated after a short pause (immediately after any command and when the editor loses
 focus). Before saving from a keyboard shortcut, call `flush()` on the component (`bind:this={editor}`, then
@@ -96,8 +99,11 @@ focus). Before saving from a keyboard shortcut, call `flush()` on the component 
 
 `Preview` also takes `columns`, `allowImage`, `idPrefix` (footnote ids, one per article on a page) and `backLabel`.
 
-Colours and fonts are CSS variables (`--mde-bg`, `--mde-fg`, `--mde-accent`, `--mde-font`, `--mde-font-size`, …); light
-and dark follow the system.
+Colours and fonts can be set from outside with `--ed-*` variables on any parent element, for example
+`--ed-bg: #09090b; --ed-fg: #e4e4e7; --ed-accent: #fbbf24;` (also `--ed-muted`, `--ed-border`, `--ed-hover`,
+`--ed-toolbar-bg`, `--ed-accent-soft`, `--ed-accent-fg`, `--ed-on-accent`, `--ed-danger`, `--ed-font`,
+`--ed-font-size`, `--ed-line-height`, `--ed-radius`, `--ed-color-scheme`). `--mde-min-height` sets the least height of
+the text area and `--mde-toolbar-top` where the toolbar sticks. Without any of these, light and dark follow the system.
 
 ## The stored format (Markdown)
 

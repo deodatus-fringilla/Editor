@@ -24,6 +24,9 @@
 		value = $bindable(''),
 		onchange,
 		onUploadImage,
+		onPickImage,
+		altEditable = true,
+		placements = ['center', 'left', 'right', 'full'],
 		onDeleteImage,
 		onPickCitation,
 		labels,
@@ -39,6 +42,16 @@
 		onchange?: (markdown: string) => void;
 		/** Stores an image and returns where it can be found. Without it the image button is hidden. */
 		onUploadImage?: (file: File) => Promise<UploadedImage>;
+		/**
+		 * Lets the host choose the image itself (for example from its own image library, with its own upload form).
+		 * Called when the image button is pressed (no file) and when an image file is pasted or dropped (with the
+		 * file). Return the image, or null when the user cancels. Used instead of `onUploadImage` when both are given.
+		 */
+		onPickImage?: (file?: File) => Promise<UploadedImage | null>;
+		/** False when the host owns the description (alt text), which is then shown but not edited here. */
+		altEditable?: boolean;
+		/** Which positions the image dialog offers. */
+		placements?: Placement[];
 		/** Deletes the stored file. When given, removing an image asks whether to delete the file too. */
 		onDeleteImage?: (src: string) => Promise<void>;
 		/** Lets the user choose a source or quotation to cite. Without it the citation button is hidden. */
@@ -86,6 +99,8 @@
 		caption: string;
 		place: Placement;
 		figure: HTMLElement | null;
+		/** Uploaded just for this dialog (and so removable again if the dialog is cancelled). */
+		fresh?: boolean;
 	};
 	let linkDraft = $state<{ href: string } | null>(null);
 	let imageDraft = $state<Draft | null>(null);
@@ -112,7 +127,7 @@
 		return () => {
 			document.removeEventListener('selectionchange', onSelection);
 			// Text typed just before the editor goes away must not be lost.
-			controller?.flush();
+			controller?.flushPending();
 			controller?.destroy();
 		};
 	});
@@ -146,19 +161,25 @@
 		linkDraft = { href: controller.currentLink().href };
 	}
 
-	async function takeImage(file: File) {
-		if (!onUploadImage || !controller) return;
+	/** An image to insert: chosen by the host (`onPickImage`) or uploaded (`onUploadImage`). */
+	async function takeImage(file?: File) {
+		if (!controller || !(onPickImage || (onUploadImage && file))) return;
 		controller.rememberSelection();
-		say(L.uploading, true);
+		if (!onPickImage) say(L.uploading, true);
 		try {
-			const r = await onUploadImage(file);
+			const r = onPickImage ? await onPickImage(file) : await onUploadImage!(file!);
+			if (!r) {
+				say('');
+				return controller.recall();
+			}
 			imageUsed = false;
 			imageDraft = {
 				src: r.src,
 				alt: r.alt ?? '',
 				caption: r.caption ?? '',
-				place: 'center',
-				figure: null
+				place: placements.includes('center') ? 'center' : placements[0],
+				figure: null,
+				fresh: !onPickImage
 			};
 			say('');
 		} catch {
@@ -217,7 +238,8 @@
 		else if (c === 'separator') k.separator();
 		else if (c === 'image') {
 			k.rememberSelection();
-			fileInput.click();
+			if (onPickImage) void takeImage();
+			else fileInput.click();
 		} else if (c === 'citation' && onPickCitation) {
 			k.rememberSelection();
 			const picked = await onPickCitation();
@@ -249,7 +271,7 @@
 		imageDraft = null;
 		controller?.recall();
 		// A picture uploaded for this dialog and then not inserted would stay behind as an unused file.
-		if (draft && !draft.figure && !imageUsed && onDeleteImage)
+		if (draft?.fresh && !draft.figure && !imageUsed && onDeleteImage)
 			void onDeleteImage(draft.src).catch(() => {});
 	}
 
@@ -267,7 +289,7 @@
 		<Toolbar
 			labels={L}
 			{editorState}
-			canImage={!!onUploadImage}
+			canImage={!!(onUploadImage || onPickImage)}
 			canCite={!!onPickCitation}
 			oncommand={command}
 		/>
@@ -329,6 +351,8 @@
 			alt={draft.alt}
 			caption={draft.caption}
 			place={draft.place}
+			{placements}
+			{altEditable}
 			editing={!!draft.figure}
 			{requireAlt}
 			onsubmit={(d) => {
@@ -355,24 +379,29 @@
 </div>
 
 <style>
+	/*
+	 * Theme. Every value can be overridden from outside with the same name under --ed-, for example
+	 * `--ed-bg: #09090b; --ed-accent: #fbbf24;` on a parent element. Other settings: --mde-min-height (the text
+	 * area's least height) and --mde-toolbar-top (where the toolbar sticks while scrolling).
+	 */
 	.mde {
-		--mde-bg: light-dark(#ffffff, #16181d);
-		--mde-fg: light-dark(#1b1f27, #e8eaef);
-		--mde-muted: light-dark(#667085, #98a2b3);
-		--mde-border: light-dark(#d0d5dd, #343a46);
-		--mde-hover: light-dark(#f2f4f7, #242831);
-		--mde-toolbar-bg: light-dark(#f9fafb, #1c1f26);
-		--mde-accent: light-dark(#1d4ed8, #6e9bff);
-		--mde-accent-soft: light-dark(#e8efff, #1f2b4a);
-		--mde-accent-fg: light-dark(#1236a3, #c9d9ff);
-		--mde-on-accent: light-dark(#ffffff, #0b1020);
-		--mde-danger: light-dark(#b42318, #ff8a80);
-		--mde-radius: 0.5rem;
-		--mde-ui-font: system-ui, -apple-system, 'Segoe UI', sans-serif;
-		--mde-font: Georgia, 'Times New Roman', serif;
-		--mde-font-size: 1.125rem;
-		--mde-line-height: 1.7;
-		color-scheme: light dark;
+		--mde-bg: var(--ed-bg, light-dark(#ffffff, #16181d));
+		--mde-fg: var(--ed-fg, light-dark(#1b1f27, #e8eaef));
+		--mde-muted: var(--ed-muted, light-dark(#667085, #98a2b3));
+		--mde-border: var(--ed-border, light-dark(#d0d5dd, #343a46));
+		--mde-hover: var(--ed-hover, light-dark(#f2f4f7, #242831));
+		--mde-toolbar-bg: var(--ed-toolbar-bg, light-dark(#f9fafb, #1c1f26));
+		--mde-accent: var(--ed-accent, light-dark(#1d4ed8, #6e9bff));
+		--mde-accent-soft: var(--ed-accent-soft, light-dark(#e8efff, #1f2b4a));
+		--mde-accent-fg: var(--ed-accent-fg, light-dark(#1236a3, #c9d9ff));
+		--mde-on-accent: var(--ed-on-accent, light-dark(#ffffff, #0b1020));
+		--mde-danger: var(--ed-danger, light-dark(#b42318, #ff8a80));
+		--mde-radius: var(--ed-radius, 0.5rem);
+		--mde-ui-font: var(--ed-ui-font, system-ui, -apple-system, 'Segoe UI', sans-serif);
+		--mde-font: var(--ed-font, Georgia, 'Times New Roman', serif);
+		--mde-font-size: var(--ed-font-size, 1.125rem);
+		--mde-line-height: var(--ed-line-height, 1.7);
+		color-scheme: var(--ed-color-scheme, light dark);
 		border: 1px solid var(--mde-border);
 		border-radius: var(--mde-radius);
 		background: var(--mde-bg);
@@ -408,11 +437,19 @@
 		pointer-events: none;
 		position: absolute;
 	}
+	/* Written out in full so a host's CSS reset (Tailwind's, for one) cannot flatten headings, lists and emphasis. */
 	.mde-surface :global(h2),
 	.mde-surface :global(h3),
 	.mde-surface :global(h4) {
 		margin: 1.4em 0 0.4em;
+		font-weight: 700;
 		line-height: 1.25;
+	}
+	.mde-surface :global(strong) {
+		font-weight: 700;
+	}
+	.mde-surface :global(em) {
+		font-style: italic;
 	}
 	.mde-surface :global(h2) {
 		font-size: 1.6em;
@@ -430,6 +467,15 @@
 	.mde-surface :global(ol) {
 		margin: 0 0 0.9em;
 		padding-left: 1.6em;
+	}
+	.mde-surface :global(ul) {
+		list-style: disc;
+	}
+	.mde-surface :global(ol) {
+		list-style: decimal;
+	}
+	.mde-surface :global(li) {
+		margin: 0.2em 0;
 	}
 	.mde-surface :global(blockquote) {
 		display: flow-root;

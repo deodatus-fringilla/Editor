@@ -160,6 +160,11 @@ export class EditorController {
 		this.hooks.emit(md);
 	}
 
+	/** Sends the Markdown out only if a typing pause is still pending (used when the editor goes away). */
+	flushPending(): void {
+		if (this.emitTimer) this.flush();
+	}
+
 	/** True when there is a single empty paragraph (cheap, for the placeholder while typing). */
 	private looksEmpty(): boolean {
 		const only = this.root.children.length === 1 ? this.root.firstElementChild : null;

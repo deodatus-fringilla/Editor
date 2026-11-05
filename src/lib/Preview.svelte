@@ -44,6 +44,7 @@
 	.mde-article :global(h3),
 	.mde-article :global(h4) {
 		margin: 1.6em 0 0.5em;
+		font-weight: 700;
 		line-height: 1.25;
 	}
 	.mde-article :global(h2) {
@@ -62,6 +63,12 @@
 	.mde-article :global(ol) {
 		margin: 0 0 1em;
 		padding-left: 1.6em;
+	}
+	.mde-article :global(ul) {
+		list-style: disc;
+	}
+	.mde-article :global(ol) {
+		list-style: decimal;
 	}
 	.mde-article :global(blockquote) {
 		display: flow-root;

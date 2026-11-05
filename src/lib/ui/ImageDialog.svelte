@@ -9,6 +9,8 @@
 		alt,
 		caption,
 		place,
+		placements,
+		altEditable,
 		editing,
 		requireAlt,
 		onsubmit,
@@ -21,6 +23,8 @@
 		alt: string;
 		caption: string;
 		place: Placement;
+		placements: Placement[];
+		altEditable: boolean;
 		editing: boolean;
 		requireAlt: boolean;
 		onsubmit: (data: { alt: string; caption: string; place: Placement }) => void;
@@ -35,14 +39,18 @@
 	let captionText = $state(caption);
 	// svelte-ignore state_referenced_locally
 	let placeChoice = $state<Placement>(place);
-	const placements = $derived<[Placement, string][]>([
-		['center', labels.placeCenter],
-		['left', labels.placeLeft],
-		['right', labels.placeRight],
-		['full', labels.placeFull]
-	]);
+	const choices = $derived(
+		(
+			[
+				['center', labels.placeCenter],
+				['left', labels.placeLeft],
+				['right', labels.placeRight],
+				['full', labels.placeFull]
+			] as [Placement, string][]
+		).filter(([p]) => placements.includes(p))
+	);
 	let form: HTMLFormElement;
-	const ready = $derived(!requireAlt || altText.trim().length > 0);
+	const ready = $derived(!requireAlt || !altEditable || altText.trim().length > 0);
 	const close = () => (form.closest('dialog') as HTMLDialogElement).close();
 
 	function submit(e: SubmitEvent) {
@@ -56,25 +64,37 @@
 <Dialog title={labels.imageTitle} {onclose}>
 	<form bind:this={form} onsubmit={submit}>
 		<img {src} alt="" class="preview" />
-		<label>
-			{labels.imageAlt}
-			<!-- svelte-ignore a11y_autofocus -->
-			<input
-				type="text"
-				bind:value={altText}
-				autofocus
-				required={requireAlt}
-				aria-describedby="mde-alt-help"
-			/>
-			<span class="help" id="mde-alt-help">{labels.imageAltHelp}</span>
-		</label>
+		{#if altEditable}
+			<label>
+				{labels.imageAlt}
+				<!-- svelte-ignore a11y_autofocus -->
+				<input
+					type="text"
+					bind:value={altText}
+					autofocus
+					required={requireAlt}
+					aria-describedby="mde-alt-help"
+				/>
+				<span class="help" id="mde-alt-help">{labels.imageAltHelp}</span>
+			</label>
+		{:else}
+			<div class="alt-readonly">
+				<span class="alt-label">{labels.imageAlt}</span>
+				{#if alt.trim()}
+					<p class="alt-text">{alt}</p>
+					<span class="help">{labels.imageAltFromHost}</span>
+				{:else}
+					<p class="error">{labels.imageAltMissing}</p>
+				{/if}
+			</div>
+		{/if}
 		<label>
 			{labels.imageCaption}
 			<input type="text" bind:value={captionText} />
 		</label>
-		<fieldset class="place">
+		<fieldset class="place" hidden={choices.length < 2}>
 			<legend>{labels.placement}</legend>
-			{#each placements as [value, text] (value)}
+			{#each choices as [value, text] (value)}
 				<label class:on={placeChoice === value}>
 					<input type="radio" name="mde-place" {value} bind:group={placeChoice} />
 					{text}
@@ -102,6 +122,21 @@
 </Dialog>
 
 <style>
+	.alt-readonly {
+		margin-bottom: 0.75rem;
+	}
+	.alt-label {
+		font-size: 0.875rem;
+		font-weight: 600;
+	}
+	.alt-text {
+		margin: 0.25rem 0 0;
+		padding: 0.5rem 0.625rem;
+		border: 1px solid var(--mde-border);
+		border-radius: 0.375rem;
+		background: var(--mde-hover);
+		font-size: 0.875rem;
+	}
 	.place {
 		display: flex;
 		flex-wrap: wrap;

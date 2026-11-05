@@ -32,6 +32,8 @@ export interface Labels {
 	imageTitle: string;
 	imageAlt: string;
 	imageAltHelp: string;
+	imageAltFromHost: string;
+	imageAltMissing: string;
 	imageCaption: string;
 	placement: string;
 	placeCenter: string;
@@ -90,6 +92,10 @@ export const labelsEn: Labels = {
 	imageTitle: 'Image',
 	imageAlt: 'Alternative text',
 	imageAltHelp: 'Describe the picture for readers who cannot see it. Required.',
+	imageAltFromHost:
+		'This description belongs to the image itself and is changed where the image is managed.',
+	imageAltMissing:
+		'This image has no description yet. Readers cannot see it until one is added where the image is managed.',
 	imageCaption: 'Caption',
 	placement: 'Position',
 	placeCenter: 'Centred',
@@ -148,6 +154,10 @@ export const labelsPl: Labels = {
 	imageTitle: 'Obraz',
 	imageAlt: 'Tekst alternatywny',
 	imageAltHelp: 'Opisz obraz dla czytelników, którzy go nie widzą. Wymagane.',
+	imageAltFromHost:
+		'Ten opis należy do samego obrazu i zmienia się tam, gdzie obrazem się zarządza.',
+	imageAltMissing:
+		'Ten obraz nie ma jeszcze opisu. Czytelnicy go nie zobaczą, dopóki opis nie zostanie dodany tam, gdzie obrazem się zarządza.',
 	imageCaption: 'Podpis',
 	placement: 'Położenie',
 	placeCenter: 'Na środku',
