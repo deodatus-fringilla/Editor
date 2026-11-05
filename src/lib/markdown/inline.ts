@@ -6,19 +6,44 @@ export interface InlineContext {
 	cite: (kind: 'src' | 'quote', id: number) => string;
 }
 
+type Marker = '**' | '*' | '__' | '_';
+
 const CITE = /^\[\[(src|quote):(\d{1,9})\]\]/;
+const WORD = /[\p{L}\p{N}]/u;
 const ESCAPABLE = /[!-/:-@[-`{-~]/;
 
+/** Index just after the code span that starts at `j`, or -1 when the backticks are not closed. */
+function skipCode(src: string, j: number): number {
+	let n = 0;
+	while (src[j + n] === '`') n++;
+	const fence = '`'.repeat(n);
+	let end = src.indexOf(fence, j + n);
+	while (end >= 0 && src[end + n] === '`') end = src.indexOf(fence, end + n + 1);
+	return end < 0 ? -1 : end + n;
+}
+
 /** Index of the closing `marker` for an opening at `from`, or -1. Skips escapes and nested star runs. */
-function findClose(src: string, from: number, marker: '**' | '*' | '_'): number {
+function findClose(src: string, from: number, marker: Marker): number {
 	for (let j = from; j < src.length; j++) {
 		const c = src[j];
 		if (c === '\\') {
 			j++;
 			continue;
 		}
-		if (marker === '_') {
-			if (c === '_' && !/[\p{L}\p{N}]/u.test(src[j + 1] ?? '')) return j;
+		// Markers inside inline code do not count.
+		if (c === '`') {
+			const after = skipCode(src, j);
+			if (after > 0) j = after - 1;
+			continue;
+		}
+		if (marker === '_' || marker === '__') {
+			if (c !== '_') continue;
+			let k = 0;
+			while (src[j + k] === '_') k++;
+			const after = /[\p{L}\p{N}]/u.test(src[j + k] ?? '');
+			if (!after && marker === '_' && k !== 2) return j + k - 1;
+			if (!after && marker === '__' && k >= 2) return j + k - 2;
+			j += k - 1;
 			continue;
 		}
 		if (c !== '*') continue;
@@ -38,7 +63,10 @@ const valid = (inner: string) => inner.length > 0 && !/^\s|\s$/.test(inner);
 function findBracketEnd(src: string, from: number): number {
 	for (let j = from + 1; j < src.length; j++) {
 		if (src[j] === '\\') j++;
-		else if (src[j] === ']') return j;
+		else if (src[j] === '`') {
+			const after = skipCode(src, j);
+			if (after > 0) j = after - 1;
+		} else if (src[j] === ']') return j;
 	}
 	return -1;
 }
@@ -56,11 +84,12 @@ function findParenEnd(src: string, from: number): number {
 function renderLink(
 	src: string,
 	i: number,
-	ctx: InlineContext
+	ctx: InlineContext,
+	find: (from: number, marker: '[' | '(') => number
 ): { html: string; next: number } | null {
-	const end = findBracketEnd(src, i);
+	const end = find(i + 1, '[');
 	if (end < 0 || src[end + 1] !== '(') return null;
-	const close = findParenEnd(src, end + 2);
+	const close = find(end + 2, '(');
 	if (close < 0) return null;
 	const text = renderInline(src.slice(i + 1, end), ctx);
 	const href = safeUrl(src.slice(end + 2, close));
@@ -75,6 +104,17 @@ function renderLink(
 export function renderInline(src: string, ctx: InlineContext): string {
 	let out = '';
 	let i = 0;
+	// Once a search for a closing marker fails from some position, it fails from every later one too: remembering that
+	// keeps a long paragraph full of unmatched stars or brackets linear instead of quadratic.
+	const failedFrom: Record<string, number> = {};
+	// (Not for `(`: a later start can still find a `)` that an earlier `(` had paired with.)
+	const close = (from: number, marker: Marker | '[' | '(') => {
+		if (marker === '(') return findParenEnd(src, from);
+		if (from >= (failedFrom[marker] ?? Infinity)) return -1;
+		const j = marker === '[' ? findBracketEnd(src, from - 1) : findClose(src, from, marker);
+		if (j < 0) failedFrom[marker] = Math.min(failedFrom[marker] ?? Infinity, from);
+		return j;
+	};
 	while (i < src.length) {
 		const c = src[i];
 		if (c === '\\') {
@@ -91,6 +131,22 @@ export function renderInline(src: string, ctx: InlineContext): string {
 			}
 			continue;
 		}
+		if (c === '`') {
+			let n = 0;
+			while (src[i + n] === '`') n++;
+			const after = skipCode(src, i);
+			if (after < 0) {
+				out += '`'.repeat(n);
+				i += n;
+				continue;
+			}
+			const end = after - n;
+			let code = src.slice(i + n, end).replace(/\n/g, ' ');
+			if (/^ .*[^ ].* $/.test(code)) code = code.slice(1, -1);
+			out += `<code>${escapeHtml(code)}</code>`;
+			i = end + n;
+			continue;
+		}
 		if (c === '\n') {
 			out += ' ';
 			i++;
@@ -99,24 +155,27 @@ export function renderInline(src: string, ctx: InlineContext): string {
 			out += ctx.cite(m[1] as 'src' | 'quote', Number(m[2]));
 			i += m[0].length;
 		} else {
-			const marker = src.startsWith('**', i)
+			const wordBefore = WORD.test(src[i - 1] ?? '');
+			const marker: Marker | null = src.startsWith('**', i)
 				? '**'
 				: c === '*'
 					? '*'
-					: c === '_' && !/[\p{L}\p{N}]/u.test(src[i - 1] ?? '')
-						? '_'
+					: c === '_' && !wordBefore
+						? src.startsWith('__', i)
+							? '__'
+							: '_'
 						: null;
 			if (marker) {
-				const j = findClose(src, i + marker.length, marker);
+				const j = close(i + marker.length, marker);
 				const inner = j > 0 ? src.slice(i + marker.length, j) : '';
 				if (j > 0 && valid(inner)) {
-					const tag = marker === '**' ? 'strong' : 'em';
+					const tag = marker.length === 2 ? 'strong' : 'em';
 					out += `<${tag}>${renderInline(inner, ctx)}</${tag}>`;
 					i = j + marker.length;
 					continue;
 				}
 			}
-			const link = c === '[' ? renderLink(src, i, ctx) : null;
+			const link = c === '[' ? renderLink(src, i, ctx, close) : null;
 			if (link) {
 				out += link.html;
 				i = link.next;

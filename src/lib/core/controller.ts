@@ -48,7 +48,15 @@ export interface Hooks {
 	/** The user is about to remove a figure: the host asks how. */
 	removeFigure: (figure: HTMLElement) => void;
 	openLink: () => void;
+	/** Which image addresses may appear (see RenderOptions.allowImage). */
+	allowImage: (src: string) => boolean;
 }
+
+/** Clipboard type for the editor's own Markdown, so copy and paste inside the editor keep citations and images. */
+export const CLIPBOARD_TYPE = 'text/x-mde-markdown';
+
+const hasContent = (el: Element) =>
+	!!el.textContent?.replace(/\u200b/g, '').trim() || !!el.querySelector('figure, .mde-cite');
 
 export interface FigureData {
 	src: string;
@@ -65,6 +73,9 @@ export class EditorController {
 	readonly history: History;
 	private saved: SelectionSnapshot | null = null;
 	private composing = false;
+	/** What is being dragged inside the editor: a figure, some text, or nothing (a drag from outside). */
+	private dragging: HTMLElement | 'text' | null = null;
+	private emitTimer: ReturnType<typeof setTimeout> | undefined;
 
 	constructor(
 		readonly root: HTMLElement,
@@ -75,12 +86,34 @@ export class EditorController {
 
 	private label = (kind: 'src' | 'quote', id: number) =>
 		this.hooks.labels().citationLabel(kind, id);
+	private renderOptions = () => ({ citationLabel: this.label, allowImage: this.hooks.allowImage });
+
+	/** Gives citation chips and kept blocks the current labels (after the host switched language). */
+	relabel(): void {
+		const L = this.hooks.labels();
+		for (const raw of Array.from(this.root.querySelectorAll<HTMLElement>('pre.mde-raw'))) {
+			raw.dataset.label =
+				raw.dataset.kind === 'table'
+					? L.rawTable
+					: raw.dataset.kind === 'image'
+						? L.rawImage
+						: L.rawCode;
+			raw.title = L.rawHelp;
+		}
+		for (const chip of Array.from(this.root.querySelectorAll<HTMLElement>('.mde-cite'))) {
+			const [kind, id] = (chip.dataset.cite ?? '').split(':');
+			chip.textContent = this.label(kind as 'src' | 'quote', Number(id));
+		}
+	}
 
 	// ---- content ------------------------------------------------------------------------------------------------
 
 	load(markdown: string): void {
-		this.root.innerHTML = renderMarkdown(markdown, { mode: 'editor', citationLabel: this.label });
+		clearTimeout(this.emitTimer);
+		this.emitTimer = undefined;
+		this.root.innerHTML = renderMarkdown(markdown, { ...this.renderOptions(), mode: 'editor' });
 		normalizeRoot(this.root);
+		this.relabel();
 		this.root.toggleAttribute('data-empty', !domToMarkdown(this.root));
 		this.history.reset();
 		this.pushState();
@@ -104,12 +137,33 @@ export class EditorController {
 				{ node: keep[2], offset: keep[3] }
 			);
 		}
+		if (kind === 'typing') {
+			// Writing the whole article out on every key is slow in long texts (and so is whatever the host does with
+			// it), so while typing the Markdown goes out after a short pause.
+			this.history.typed();
+			this.root.toggleAttribute('data-empty', this.looksEmpty());
+			clearTimeout(this.emitTimer);
+			this.emitTimer = setTimeout(() => this.flush(), 150);
+		} else {
+			this.history.commit();
+			this.flush();
+		}
+		this.pushState();
+	}
+
+	/** Sends the current Markdown out now (called after the typing pause, after commands, and on blur). */
+	flush(): void {
+		clearTimeout(this.emitTimer);
+		this.emitTimer = undefined;
 		const md = this.markdown();
 		this.root.toggleAttribute('data-empty', !md);
-		if (kind === 'typing') this.history.typed();
-		else this.history.commit();
 		this.hooks.emit(md);
-		this.pushState();
+	}
+
+	/** True when there is a single empty paragraph (cheap, for the placeholder while typing). */
+	private looksEmpty(): boolean {
+		const only = this.root.children.length === 1 ? this.root.firstElementChild : null;
+		return !!only && only.tagName === 'P' && !hasContent(only);
 	}
 
 	pushState(): void {
@@ -136,6 +190,19 @@ export class EditorController {
 	list = (kind: 'ul' | 'ol') => this.run(() => toggleList(this.root, kind));
 	quote = () => this.run(() => toggleQuote(this.root));
 
+	/** A separator line after the current block. */
+	separator = () =>
+		this.run(() => {
+			const range = currentRange(this.root);
+			const top = range ? topBlockOf(this.root, range.startContainer) : null;
+			const hr = this.root.ownerDocument.createElement('hr');
+			if (top) top.after(hr);
+			else this.root.append(hr);
+			normalizeRoot(this.root);
+			if (hr.nextElementSibling)
+				setRange(this.root.ownerDocument, { node: hr.nextElementSibling, offset: 0 });
+		});
+
 	undo = () => {
 		if (this.history.undo()) this.afterHistory();
 	};
@@ -143,8 +210,7 @@ export class EditorController {
 		if (this.history.redo()) this.afterHistory();
 	};
 	private afterHistory() {
-		this.root.toggleAttribute('data-empty', !this.markdown());
-		this.hooks.emit(this.markdown());
+		this.flush();
 		this.pushState();
 	}
 
@@ -186,7 +252,7 @@ export class EditorController {
 
 	insertFigure(data: FigureData): void {
 		const src = safeUrl(data.src);
-		if (!src) throw new Error('Unsafe image address');
+		if (!src || !this.hooks.allowImage(src)) throw new Error('Image address not allowed');
 		this.recall();
 		this.run(() => {
 			const tpl = this.root.ownerDocument.createElement('template');
@@ -249,7 +315,15 @@ export class EditorController {
 		this.composing = false;
 		this.changed('typing');
 	};
-	blur = () => this.history.commit();
+	blur = () => {
+		this.history.commit();
+		if (this.emitTimer) this.flush();
+	};
+
+	/** Stops the pending timer (when the editor goes away). */
+	destroy(): void {
+		clearTimeout(this.emitTimer);
+	}
 
 	beforeInput = (e: InputEvent) => {
 		if (e.inputType === 'historyUndo') {
@@ -310,7 +384,68 @@ export class EditorController {
 		}
 	};
 
-	// ---- paste and drop -----------------------------------------------------------------------------------------
+	// ---- copy, cut, paste and drop -------------------------------------------------------------------------------
+
+	/** Puts the selection on the clipboard as the editor's Markdown, clean HTML for other programs, and plain text. */
+	private writeClipboard(e: ClipboardEvent): boolean {
+		const range = currentRange(this.root);
+		if (!range || range.collapsed || !e.clipboardData) return false;
+		const holder = this.root.ownerDocument.createElement('div');
+		holder.append(range.cloneContents());
+		normalizeRoot(holder);
+		const md = domToMarkdown(holder);
+		e.clipboardData.setData(CLIPBOARD_TYPE, md);
+		e.clipboardData.setData(
+			'text/html',
+			renderMarkdown(md, { ...this.renderOptions(), mode: 'publish' })
+		);
+		e.clipboardData.setData('text/plain', range.toString());
+		return true;
+	}
+
+	copy = (e: ClipboardEvent) => {
+		if (this.writeClipboard(e)) e.preventDefault();
+	};
+
+	/** Cutting is moving: images in the selection leave the article without the "delete the file?" question. */
+	cut = (e: ClipboardEvent) => {
+		if (!this.writeClipboard(e)) return;
+		e.preventDefault();
+		this.run(() => currentRange(this.root)?.deleteContents());
+	};
+
+	dragStart = (e: DragEvent) => {
+		const fig = (e.target as Element | null)?.closest?.('figure');
+		this.dragging = fig && this.root.contains(fig) ? (fig as HTMLElement) : 'text';
+		if (fig && e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+	};
+
+	/** Accepts a drop of a dragged image or of files (without this the browser refuses them). */
+	dragOver = (e: DragEvent) => {
+		const files = Array.from(e.dataTransfer?.types ?? []).includes('Files');
+		if (this.dragging instanceof HTMLElement || files) {
+			e.preventDefault();
+			if (e.dataTransfer) e.dataTransfer.dropEffect = files ? 'copy' : 'move';
+		}
+	};
+
+	dragEnd = () => {
+		this.dragging = null;
+	};
+
+	/** Drops a dragged image before or after the block under the pointer. */
+	private dropFigure(fig: HTMLElement, e: DragEvent) {
+		const doc = this.root.ownerDocument;
+		const pos = doc.caretPositionFromPoint?.(e.clientX, e.clientY);
+		const target = pos ? topBlockOf(this.root, pos.offsetNode) : null;
+		if (!target || target === fig) return;
+		const box = target.getBoundingClientRect();
+		this.run(() => {
+			if (e.clientY < box.top + box.height / 2) target.before(fig);
+			else target.after(fig);
+			normalizeRoot(this.root);
+		});
+	}
 
 	paste = (e: ClipboardEvent) => {
 		const data = e.clipboardData;
@@ -321,7 +456,14 @@ export class EditorController {
 
 	drop = (e: DragEvent) => {
 		const data = e.dataTransfer;
-		if (!data) return;
+		const dragged = this.dragging;
+		this.dragging = null;
+		if (dragged instanceof HTMLElement) {
+			e.preventDefault();
+			return this.dropFigure(dragged, e);
+		}
+		// Text dragged within the editor: the browser moves it, and the input event that follows tidies up.
+		if (!data || dragged === 'text') return;
 		const hasImage = Array.from(data.files).some((f) => f.type.startsWith('image/'));
 		if (!hasImage && !data.getData('text/html') && !data.getData('text/plain')) return;
 		e.preventDefault();
@@ -336,11 +478,16 @@ export class EditorController {
 	private insertTransfer(data: DataTransfer) {
 		const image = Array.from(data.files).find((f) => f.type.startsWith('image/'));
 		if (image) return this.hooks.imageFile(image);
+		const own = data.getData(CLIPBOARD_TYPE);
 		const html = data.getData('text/html');
-		let content = html ? sanitizeHtml(html) : null;
-		if (!content || !content.textContent?.trim())
-			content = markdownToFragment(data.getData('text/plain'));
-		if (content.textContent?.trim()) this.insertBlocks(content);
+		let content = own
+			? markdownToFragment(own, this.renderOptions())
+			: html
+				? sanitizeHtml(html)
+				: null;
+		if (!content || !hasContent(content))
+			content = markdownToFragment(data.getData('text/plain'), this.renderOptions());
+		if (hasContent(content)) this.insertBlocks(content);
 	}
 
 	/** Puts cleaned content at the caret. A single paragraph goes inline; several blocks are placed between blocks. */

@@ -1,7 +1,7 @@
 import { safeUrl } from '../markdown/escape';
 import { ATOM, totalLength, type Run } from '../markdown/runs';
 
-type Fmt = { b?: boolean; i?: boolean; a?: string };
+type Fmt = { b?: boolean; i?: boolean; a?: string; c?: boolean };
 
 /** Reads the inline content of a block (or fragment) into runs, keeping every character, including placeholders. */
 export function domToRuns(parent: Node): Run[] {
@@ -18,6 +18,7 @@ export function domToRuns(parent: Node): Run[] {
 			else if (el.classList.contains('mde-cite') && el.dataset.cite)
 				out.push({ t: ATOM, atom: el.dataset.cite });
 			else if (el.tagName === 'STRONG' || el.tagName === 'B') walk(el, { ...f, b: true });
+			else if (el.tagName === 'CODE') walk(el, { ...f, c: true });
 			else if (el.tagName === 'EM' || el.tagName === 'I') walk(el, { ...f, i: true });
 			else if (el.tagName === 'A')
 				walk(el, { ...f, a: safeUrl(el.getAttribute('href') ?? '') ?? f.a });
@@ -52,6 +53,7 @@ export function runsToDom(
 		}
 		let node: Node = doc.createTextNode(r.t);
 		for (const [on, tag] of [
+			[r.c, 'code'],
 			[r.i, 'em'],
 			[r.b, 'strong']
 		] as const) {

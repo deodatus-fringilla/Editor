@@ -26,17 +26,22 @@ function figure(el: Element): string | null {
 
 function list(el: Element): string | null {
 	const lines: string[] = [];
+	let n = Math.max(0, (Number(el.getAttribute('start')) || 1) - 1);
 	for (const li of Array.from(el.children)) {
-		const text = oneLine(li);
+		const text = inline(li);
 		if (!text) continue;
-		const marker = el.tagName === 'OL' ? `${lines.length + 1}. ` : '- ';
-		lines.push(marker + text);
+		const marker = el.tagName === 'OL' ? `${++n}. ` : '- ';
+		// Lines after a break are indented under the item, and protected so they cannot start a new item.
+		const [first, ...rest] = text.split('\n');
+		lines.push(marker + first, ...rest.map((l) => ' '.repeat(marker.length) + protectLineStart(l)));
 	}
 	return lines.length ? lines.join('\n') : null;
 }
 
 function quote(el: Element): string | null {
-	const hasBlocks = Array.from(el.children).some((c) => /^(P|H[2-4]|UL|OL)$/.test(c.tagName));
+	const hasBlocks = Array.from(el.children).some((c) =>
+		/^(P|H[2-4]|UL|OL|FIGURE|HR|PRE)$/.test(c.tagName)
+	);
 	const parts = hasBlocks
 		? Array.from(el.children)
 				.map(block)
@@ -64,6 +69,11 @@ function block(el: Element): string | null {
 			return list(el);
 		case 'BLOCKQUOTE':
 			return quote(el);
+		case 'HR':
+			return '---';
+		case 'PRE':
+			// A table or code block the editor keeps untouched.
+			return el.classList.contains('mde-raw') ? (el.textContent ?? '') : paragraph(el);
 		case 'FIGURE':
 			return figure(el);
 		default:

@@ -27,7 +27,8 @@
 			'm21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21',
 			'M9 8h.01'
 		],
-		citation: ['M6 3h12v18l-6-4-6 4z']
+		citation: ['M6 3h12v18l-6-4-6 4z'],
+		separator: ['M3 12h18', 'M8 7h8', 'M8 17h8']
 	};
 	let { name }: { name: string } = $props();
 </script>

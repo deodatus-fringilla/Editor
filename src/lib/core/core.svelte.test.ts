@@ -11,7 +11,12 @@ const surface = (html: string) => {
 	el.innerHTML = html;
 	return el;
 };
-const roundTrip = (md: string) => domToMarkdown(surface(renderMarkdown(md, { mode: 'editor' })));
+/** What loading Markdown into the editor and saving it again gives (the editor tidies the structure on load). */
+const roundTrip = (md: string) => {
+	const el = surface(renderMarkdown(md, { mode: 'editor' }));
+	normalizeRoot(el);
+	return domToMarkdown(el);
+};
 
 describe('Markdown survives a trip through the editing surface', () => {
 	const samples = [
@@ -145,7 +150,8 @@ describe('image placement and moving', () => {
 			state: () => {},
 			imageFile: () => {},
 			removeFigure: () => {},
-			openLink: () => {}
+			openLink: () => {},
+			allowImage: (src: string) => src.startsWith('/')
 		});
 		return { root, k, out };
 	};
@@ -178,4 +184,96 @@ describe('image placement and moving', () => {
 		expect(out.at(-1)).toBe('text\n\n![X](/x.png){.left}');
 		root.remove();
 	});
+});
+
+describe('audit fixes: nothing is lost on load', () => {
+	const cases: [string, string][] = [
+		['> - one\n> - two', '> - one\n> - two'],
+		['> text\n>\n> ![alt](/a.png "cap")', '> text\n>\n> ![alt](/a.png "cap")'],
+		['> > inner\n> outer', '> inner\n>\n> outer'],
+		['- a\n  - b\n- c', '- a\n- b\n- c'],
+		['__bold__', '**bold**'],
+		['# Title', '## Title']
+	];
+	for (const [md, out] of cases) it(JSON.stringify(md), () => expect(roundTrip(md)).toBe(out));
+
+	it('keeps the words apart in pasted list items with several paragraphs', () => {
+		expect(
+			domToMarkdown(sanitizeHtml('<ul><li><p>one</p></li><li><p>two</p><p>more</p></li></ul>'))
+		).toBe('- one\n- two\\\n  more');
+	});
+	it('flattens pasted nested lists instead of merging their words', () => {
+		expect(domToMarkdown(sanitizeHtml('<ul><li>a<ul><li>b</li></ul></li><li>c</li></ul>'))).toBe(
+			'- a\n- b\n- c'
+		);
+	});
+	it('drops relative links from pasted pages (they pointed into the other site)', () => {
+		expect(
+			domToMarkdown(sanitizeHtml('<p><a href="/about">x</a> <a href="https://x.pl">y</a></p>'))
+		).toBe('x [y](https://x.pl)');
+	});
+});
+
+describe('audit fixes: copy and paste inside the editor', () => {
+	it('keeps citations and images when text is cut and pasted back', () => {
+		const root = document.createElement('div');
+		root.contentEditable = 'true';
+		document.body.append(root);
+		const out: string[] = [];
+		const k = new EditorController(root, {
+			labels: () => labelsEn,
+			emit: (m) => out.push(m),
+			state: () => {},
+			imageFile: () => {},
+			removeFigure: () => {},
+			openLink: () => {},
+			allowImage: (src: string) => src.startsWith('/')
+		});
+		k.load('First[[src:7]] para.\n\n![Alt](/a.png "Cap"){.left}\n\nLast.');
+		const range = document.createRange();
+		range.setStartBefore(root.firstElementChild!);
+		range.setEndAfter(root.querySelector('figure')!);
+		document.getSelection()!.removeAllRanges();
+		document.getSelection()!.addRange(range);
+		const clip = new DataTransfer();
+		k.cut(new ClipboardEvent('cut', { clipboardData: clip, cancelable: true }));
+		expect(out.at(-1)).toBe('Last.');
+		expect(clip.getData('text/x-mde-markdown')).toBe(
+			'First[[src:7]] para.\n\n![Alt](/a.png "Cap"){.left}'
+		);
+		// paste it back at the end
+		const end = document.createRange();
+		end.selectNodeContents(root.lastElementChild!);
+		end.collapse(false);
+		document.getSelection()!.removeAllRanges();
+		document.getSelection()!.addRange(end);
+		k.paste(new ClipboardEvent('paste', { clipboardData: clip, cancelable: true }));
+		expect(out.at(-1)).toBe('Last.\n\nFirst[[src:7]] para.\n\n![Alt](/a.png "Cap"){.left}');
+		root.remove();
+	});
+});
+
+describe('kept blocks survive a trip through the editor unchanged', () => {
+	const kept = [
+		'Before\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\nAfter',
+		'```js\nconst a = "*x*";\n```',
+		'a\n\n---\n\nb',
+		'Text with `a*b` and ``x`y`` code.',
+		'> quoted\n>\n> ---'
+	];
+	for (const md of kept) it(JSON.stringify(md).slice(0, 50), () => expect(roundTrip(md)).toBe(md));
+	it('keeps backticks typed as text literal', () => {
+		expect(domToMarkdown(surface('<p>a `b` c</p>'))).toBe('a \\`b\\` c');
+	});
+});
+
+describe('list items with line breaks', () => {
+	for (const md of ['- a\\\n  b\n- c', '1. one\\\n   two\n2. three', '- a\\\n  \\- not an item'])
+		it(JSON.stringify(md), () => expect(roundTrip(md)).toBe(md));
+});
+
+describe('numbered list start', () => {
+	it('survives the editor', () => expect(roundTrip('4. four\n5. five')).toBe('4. four\n5. five'));
+	it('survives a paste', () =>
+		expect(domToMarkdown(sanitizeHtml('<ol start="3"><li>c</li></ol>'))).toBe('3. c'));
 });

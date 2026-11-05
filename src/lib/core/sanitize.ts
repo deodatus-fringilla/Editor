@@ -1,5 +1,5 @@
 import { safeUrl } from '../markdown/escape';
-import { renderMarkdown } from '../markdown/render';
+import { renderMarkdown, type RenderOptions } from '../markdown/render';
 import { normalizeRoot } from './normalize';
 
 /** Elements removed together with everything inside them. */
@@ -48,6 +48,7 @@ const BLOCK: Record<string, string> = {
 	H5: 'h4',
 	H6: 'h4',
 	BLOCKQUOTE: 'blockquote',
+	HR: 'hr',
 	UL: 'ul',
 	OL: 'ol',
 	LI: 'li'
@@ -90,9 +91,11 @@ function copy(src: Node, into: Node, doc: Document): void {
 		if ((tag === 'B' || tag === 'STRONG') && w !== 'normal') target = wrap(doc, 'strong', target);
 		else if (tag !== 'B' && tag !== 'STRONG' && w === 'bold') target = wrap(doc, 'strong', target);
 		if (tag === 'I' || tag === 'EM' || italic(el)) target = wrap(doc, 'em', target);
+		if (tag === 'CODE' && el.parentElement?.tagName !== 'PRE') target = wrap(doc, 'code', target);
 		if (tag === 'A') {
+			// A relative link pointed into the page it was copied from, so only full addresses are kept.
 			const href = safeUrl(el.getAttribute('href') ?? '');
-			if (href) {
+			if (href && /^(https?|mailto):/i.test(href)) {
 				const a = wrap(doc, 'a', target);
 				a.setAttribute('href', href);
 				target = a;
@@ -114,6 +117,8 @@ function copy(src: Node, into: Node, doc: Document): void {
 			!(tag === 'ARTICLE' && hasBlockChild(el))
 		) {
 			target = wrap(doc, block, target);
+			const start = tag === 'OL' ? Number(el.getAttribute('start')) : 0;
+			if (start > 1) (target as HTMLElement).setAttribute('start', String(Math.floor(start)));
 		}
 		copy(el, target, doc);
 	}
@@ -156,9 +161,9 @@ export function sanitizeHtml(html: string): HTMLElement {
 }
 
 /** Plain text is read as Markdown, the editor's own format. */
-export function markdownToFragment(text: string): HTMLElement {
+export function markdownToFragment(text: string, options: RenderOptions = {}): HTMLElement {
 	const out = document.createElement('div');
-	out.innerHTML = renderMarkdown(text, { mode: 'editor' });
+	out.innerHTML = renderMarkdown(text, { ...options, mode: 'editor' });
 	normalizeRoot(out);
 	return out;
 }

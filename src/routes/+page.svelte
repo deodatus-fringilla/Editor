@@ -9,6 +9,7 @@
 	let tab = $state<'preview' | 'markdown'>('preview');
 	let confirmDelete = $state(true);
 	let twoColumns = $state(false);
+	let readonly = $state(false);
 	const labels = $derived(lang === 'pl' ? labelsPl : labelsEn);
 </script>
 
@@ -30,6 +31,7 @@
 			<label class="check"
 				><input type="checkbox" bind:checked={twoColumns} /> Two columns (preview)</label
 			>
+			<label class="check"><input type="checkbox" bind:checked={readonly} /> Read-only</label>
 			<button type="button" onclick={() => (value = '')}>Clear</button>
 			<button type="button" onclick={() => (value = sample)}>Sample</button>
 		</div>
@@ -41,6 +43,7 @@
 				bind:value
 				{labels}
 				{lang}
+				{readonly}
 				placeholder={lang === 'pl' ? 'Zacznij pisać…' : 'Start writing…'}
 				onUploadImage={uploadImage}
 				onDeleteImage={confirmDelete ? deleteImage : undefined}

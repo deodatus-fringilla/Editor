@@ -1,4 +1,4 @@
-import { leafBlocks, leafOf } from '../core/dom';
+import { isAtomic, leafBlocks, leafOf } from '../core/dom';
 import { offsetIn, positionAt } from '../core/domRuns';
 import { currentRange, setRange } from '../core/selection';
 
@@ -138,7 +138,7 @@ export function toggleList(root: HTMLElement, kind: 'ul' | 'ol'): void {
 
 export function toggleQuote(root: HTMLElement): void {
 	run(root, (range) => {
-		const tops = affected(root, range).filter((t) => !isList(t) && t.tagName !== 'FIGURE');
+		const tops = affected(root, range).filter((t) => !isList(t) && !isAtomic(t));
 		if (!tops.length) return;
 		if (tops.every((t) => t.tagName === 'BLOCKQUOTE')) {
 			for (const q of tops) {

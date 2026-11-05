@@ -1,7 +1,25 @@
 /** Shared DOM facts about the editing surface. */
 
 export const LEAF = 'p, h2, h3, h4, li';
-export const TOP_BLOCKS = new Set(['P', 'H2', 'H3', 'H4', 'BLOCKQUOTE', 'UL', 'OL', 'FIGURE']);
+export const TOP_BLOCKS = new Set([
+	'P',
+	'H2',
+	'H3',
+	'H4',
+	'BLOCKQUOTE',
+	'UL',
+	'OL',
+	'FIGURE',
+	'HR',
+	'PRE'
+]);
+
+/** Blocks that are one piece: an image, a separator line, a kept table or code block. The caret goes around them. */
+export const isAtomic = (el: Element | null | undefined) =>
+	!!el &&
+	(el.tagName === 'FIGURE' ||
+		el.tagName === 'HR' ||
+		(el.tagName === 'PRE' && el.classList.contains('mde-raw')));
 
 export const isElement = (n: Node | null | undefined): n is HTMLElement => !!n && n.nodeType === 1;
 

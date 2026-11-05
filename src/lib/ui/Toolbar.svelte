@@ -12,6 +12,7 @@
 		| 'ul'
 		| 'ol'
 		| 'quote'
+		| 'separator'
 		| 'image'
 		| 'citation';
 </script>
@@ -114,7 +115,8 @@
 					keys: 'Ctrl+Shift+9',
 					icon: 'quote',
 					pressed: editorState.quote
-				}
+				},
+				{ id: 'separator', label: labels.separator, icon: 'separator' }
 			],
 			[
 				...(canImage ? [{ id: 'image', label: labels.image, icon: 'image' } as Item] : []),
@@ -126,6 +128,8 @@
 	const flat = $derived(groups.flat());
 	let bar: HTMLElement;
 	let current = $state(0);
+	// The tab stop must be a button that can take focus: at start Undo is disabled.
+	const stop = $derived(flat[current]?.disabled ? flat.findIndex((x) => !x.disabled) : current);
 
 	// One tab stop for the whole toolbar; arrow keys move between buttons.
 	function onkeydown(e: KeyboardEvent) {
@@ -159,7 +163,7 @@
 					aria-label={item.label}
 					aria-pressed={item.pressed === undefined ? undefined : item.pressed}
 					disabled={item.disabled}
-					tabindex={i === current ? 0 : -1}
+					tabindex={i === stop ? 0 : -1}
 					onmousedown={(e) => e.preventDefault()}
 					onfocus={() => (current = i)}
 					onclick={() => oncommand(item.id)}

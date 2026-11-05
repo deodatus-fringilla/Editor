@@ -6,17 +6,26 @@
 		value,
 		citationLabel,
 		columns = 1,
+		allowImage,
+		idPrefix,
+		backLabel,
 		class: className = ''
 	}: {
 		value: string;
 		citationLabel?: RenderOptions['citationLabel'];
 		/** 1 for a single column, 2 for a magazine-style layout where the text flows from one column into the next. */
 		columns?: 1 | 2;
+		allowImage?: RenderOptions['allowImage'];
+		/** Prefix for footnote ids; give each article on a page its own. */
+		idPrefix?: string;
+		backLabel?: string;
 		class?: string;
 	} = $props();
 
 	// The renderer escapes all text, shows raw HTML as text and keeps only safe links, so this HTML is safe to insert.
-	const html = $derived(renderMarkdown(value, { mode: 'publish', citationLabel }));
+	const html = $derived(
+		renderMarkdown(value, { mode: 'publish', citationLabel, allowImage, idPrefix, backLabel })
+	);
 </script>
 
 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -123,6 +132,53 @@
 		.cols2 :global(.footnotes) {
 			column-span: all;
 		}
+	}
+	.mde-article :global(hr) {
+		margin: 2em auto;
+		width: 40%;
+		border: 0;
+		border-top: 1px solid currentColor;
+		opacity: 0.4;
+	}
+	.mde-article :global(code) {
+		padding: 0.1em 0.3em;
+		border-radius: 0.25rem;
+		background: color-mix(in srgb, currentColor 8%, transparent);
+		font:
+			0.88em ui-monospace,
+			'SF Mono',
+			Menlo,
+			Consolas,
+			monospace;
+	}
+	.mde-article :global(pre) {
+		padding: 0.75rem;
+		overflow-x: auto;
+		border-radius: 0.375rem;
+		background: color-mix(in srgb, currentColor 6%, transparent);
+	}
+	.mde-article :global(pre code) {
+		padding: 0;
+		background: none;
+	}
+	.mde-article :global(.table) {
+		overflow-x: auto;
+		margin: 0 0 1em;
+	}
+	.mde-article :global(table) {
+		border-collapse: collapse;
+		font-size: 0.9em;
+	}
+	.mde-article :global(th),
+	.mde-article :global(td) {
+		padding: 0.35em 0.6em;
+		border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+		text-align: left;
+		vertical-align: top;
+	}
+	.cols2 :global(.table),
+	.cols2 :global(pre) {
+		break-inside: avoid;
 	}
 	.mde-article :global(figure) {
 		margin: 1.5em 0;

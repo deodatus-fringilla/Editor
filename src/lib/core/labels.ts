@@ -14,6 +14,11 @@ export interface Labels {
 	bulletList: string;
 	numberedList: string;
 	quote: string;
+	separator: string;
+	rawTable: string;
+	rawCode: string;
+	rawImage: string;
+	rawHelp: string;
 	image: string;
 	citation: string;
 	source: string;
@@ -46,6 +51,9 @@ export interface Labels {
 	uploading: string;
 	uploadFailed: string;
 	deleteFailed: string;
+	imageStillUsed: string;
+	imageNotAllowed: string;
+	backToText: string;
 	citationLabel: (kind: 'src' | 'quote', id: number) => string;
 }
 
@@ -64,6 +72,11 @@ export const labelsEn: Labels = {
 	bulletList: 'Bulleted list',
 	numberedList: 'Numbered list',
 	quote: 'Quote',
+	separator: 'Separator line',
+	rawTable: 'Table (kept as written)',
+	rawCode: 'Code (kept as written)',
+	rawImage: 'Image not shown: its address is not allowed (kept as written)',
+	rawHelp: 'The editor keeps this exactly as it was. To change it, edit the Markdown.',
 	image: 'Insert image',
 	citation: 'Insert citation',
 	source: 'Source',
@@ -96,6 +109,9 @@ export const labelsEn: Labels = {
 	uploading: 'Uploading image…',
 	uploadFailed: 'The image could not be uploaded.',
 	deleteFailed: 'The image was removed from the article, but the file could not be deleted.',
+	imageStillUsed: 'The image appears again in this article, so its file was kept.',
+	imageNotAllowed: 'This image address is not allowed.',
+	backToText: 'Back to text',
 	citationLabel: (kind, id) => `${kind === 'src' ? 'Source' : 'Quote'} ${id}`
 };
 
@@ -114,6 +130,11 @@ export const labelsPl: Labels = {
 	bulletList: 'Lista punktowana',
 	numberedList: 'Lista numerowana',
 	quote: 'Cytat blokowy',
+	separator: 'Linia oddzielająca',
+	rawTable: 'Tabela (zachowana bez zmian)',
+	rawCode: 'Kod (zachowany bez zmian)',
+	rawImage: 'Obraz niewyświetlany: niedozwolony adres (zachowany bez zmian)',
+	rawHelp: 'Edytor zachowuje ten fragment dokładnie tak, jak był. Aby go zmienić, edytuj Markdown.',
 	image: 'Wstaw obraz',
 	citation: 'Wstaw odwołanie do źródła',
 	source: 'Źródło',
@@ -146,5 +167,8 @@ export const labelsPl: Labels = {
 	uploading: 'Wysyłanie obrazu…',
 	uploadFailed: 'Nie udało się wysłać obrazu.',
 	deleteFailed: 'Obraz usunięto z artykułu, ale nie udało się skasować pliku.',
+	imageStillUsed: 'Ten obraz występuje jeszcze w artykule, więc plik zostaje.',
+	imageNotAllowed: 'Ten adres obrazu jest niedozwolony.',
+	backToText: 'Powrót do tekstu',
 	citationLabel: (kind, id) => `${kind === 'src' ? 'Źródło' : 'Cytat'} ${id}`
 };

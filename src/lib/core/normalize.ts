@@ -1,7 +1,7 @@
-import { TOP_BLOCKS, isElement } from './dom';
+import { TOP_BLOCKS, isAtomic, isElement } from './dom';
 
 const RENAME: Record<string, string> = { DIV: 'P', H1: 'H2', H5: 'H4', H6: 'H4' };
-const BLOCKISH = /^(P|DIV|H[1-6]|BLOCKQUOTE|UL|OL|LI|FIGURE|TABLE)$/;
+const BLOCKISH = /^(P|DIV|H[1-6]|BLOCKQUOTE|UL|OL|LI|FIGURE|TABLE|HR|PRE)$/;
 
 function rename(el: HTMLElement, tag: string): HTMLElement {
 	const n = el.ownerDocument.createElement(tag);
@@ -19,12 +19,40 @@ function wrapLoose(parent: Element, nodes: Node[], tag: string) {
 	for (const n of nodes) el.append(n);
 }
 
+/**
+ * A text block must hold only inline content. Blocks inside it (a pasted `<li><p>…</p><p>…</p></li>`, a `<div>` the
+ * browser made) are unwrapped, with a line break between them so their words do not run together.
+ */
+function flattenLeaf(leaf: Element) {
+	for (const child of Array.from(leaf.children)) {
+		if (!BLOCKISH.test(child.tagName) || child.tagName === 'UL' || child.tagName === 'OL') continue;
+		flattenLeaf(child);
+		if (child.previousSibling && child.previousSibling.nodeName !== 'BR')
+			child.before(leaf.ownerDocument.createElement('br'));
+		child.replaceWith(...Array.from(child.childNodes));
+	}
+}
+
+/** Flat lists only: items of a nested list move up, right after the item that held them. */
 function fixList(list: Element) {
 	for (const child of Array.from(list.childNodes)) {
-		if (isElement(child) && child.tagName === 'LI') continue;
+		if (isElement(child) && child.tagName === 'LI') {
+			let after: Element = child;
+			for (const nested of Array.from(child.querySelectorAll(':scope > ul, :scope > ol'))) {
+				for (const item of Array.from(nested.children)) {
+					after.after(item);
+					after = item;
+				}
+				nested.remove();
+			}
+			flattenLeaf(child);
+			continue;
+		}
 		if (isBlank(child)) child.remove();
 		else wrapLoose(list, [child], 'li');
 	}
+	// Items moved up may hold lists of their own.
+	if (list.querySelector(':scope > li > ul, :scope > li > ol')) fixList(list);
 }
 
 function fixQuote(q: Element) {
@@ -35,10 +63,21 @@ function fixQuote(q: Element) {
 		run = [];
 	};
 	for (const child of Array.from(q.childNodes)) {
-		if (isElement(child) && /^(P|H[2-4])$/.test(child.tagName)) flush();
-		else if (isElement(child) && BLOCKISH.test(child.tagName)) {
+		if (isElement(child) && (/^(P|H[2-4])$/.test(child.tagName) || isAtomic(child))) {
 			flush();
-			rename(child, 'P');
+			if (!isAtomic(child)) flattenLeaf(child);
+		} else if (isElement(child) && (child.tagName === 'UL' || child.tagName === 'OL')) {
+			flush();
+			fixList(child);
+		} else if (isElement(child) && child.tagName === 'BLOCKQUOTE') {
+			// One level of quoting only: an inner quote's blocks join the outer one.
+			flush();
+			const inner = Array.from(child.childNodes);
+			child.replaceWith(...inner);
+			return fixQuote(q);
+		} else if (isElement(child) && BLOCKISH.test(child.tagName)) {
+			flush();
+			flattenLeaf(rename(child, 'P'));
 		} else run.push(child);
 	}
 	flush();
@@ -70,9 +109,11 @@ export function normalizeRoot(root: HTMLElement): void {
 				continue;
 			}
 			if (RENAME[el.tagName]) el = rename(el, RENAME[el.tagName]);
+			if (el.tagName === 'PRE' && !isAtomic(el)) el = rename(el, 'P');
 			if (!TOP_BLOCKS.has(el.tagName)) el = rename(el, 'P');
 			if (el.tagName === 'UL' || el.tagName === 'OL') fixList(el);
 			else if (el.tagName === 'BLOCKQUOTE') fixQuote(el);
+			else if (!isAtomic(el)) flattenLeaf(el);
 		}
 		flush();
 	}
@@ -85,10 +126,10 @@ export function normalizeRoot(root: HTMLElement): void {
 		p.append(root.ownerDocument.createElement('br'));
 		return p;
 	};
-	for (const fig of Array.from(root.querySelectorAll(':scope > figure'))) {
-		if (!fig.previousElementSibling || fig.previousElementSibling.tagName === 'FIGURE')
-			fig.before(stop());
-		if (!fig.nextElementSibling) fig.after(stop());
+	for (const block of Array.from(root.children).filter(isAtomic)) {
+		if (!block.previousElementSibling || isAtomic(block.previousElementSibling))
+			block.before(stop());
+		if (!block.nextElementSibling) block.after(stop());
 	}
 	if (!root.firstChild) root.append(stop());
 }

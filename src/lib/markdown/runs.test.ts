@@ -53,6 +53,13 @@ describe('runsToMarkdown', () => {
 		];
 		expect(runsToMarkdown(r)).toBe('**a**_b_');
 	});
+	it('never turns zero-width markers into spaces', () => {
+		expect(runsToMarkdown([{ t: 'a\u200b\u200bb' }])).toBe('ab');
+		expect(runsToMarkdown([{ t: 'a \u200b b' }])).toBe('a b');
+	});
+	it('drops leading breaks', () => {
+		expect(runsToMarkdown([{ t: ATOM, atom: 'br' }, { t: 'a' }])).toBe('a');
+	});
 	it('drops trailing breaks and collapses spaces', () => {
 		expect(runsToMarkdown([{ t: ' a  b ' }, { t: ATOM, atom: 'br' }])).toBe('a b');
 	});

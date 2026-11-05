@@ -12,6 +12,8 @@ export interface Run {
 	i?: boolean;
 	/** Link address. */
 	a?: string;
+	/** Inline code. */
+	c?: boolean;
 	/** `br`, or a citation such as `src:12`. */
 	atom?: string;
 }
@@ -20,7 +22,7 @@ export const runLength = (r: Run) => r.t.length;
 export const totalLength = (runs: Run[]) => runs.reduce((n, r) => n + r.t.length, 0);
 
 const sameFormat = (x: Run, y: Run) =>
-	!x.atom && !y.atom && !!x.b === !!y.b && !!x.i === !!y.i && x.a === y.a;
+	!x.atom && !y.atom && !!x.b === !!y.b && !!x.i === !!y.i && !!x.c === !!y.c && x.a === y.a;
 
 /** Drops empty runs and merges neighbours with identical formatting. */
 export function mergeRuns(runs: Run[]): Run[] {
@@ -116,9 +118,7 @@ export function tidyRuns(runs: Run[]): Run[] {
 				? r
 				: {
 						...r,
-						t: r.t.replace(/[ \t\r\n\u00a0\u200b]+/g, (m) =>
-							m.includes('\u200b') && m.trim() === '\u200b' ? '' : ' '
-						)
+						t: r.t.replace(/\u200b/g, '').replace(/[ \t\r\n\u00a0]+/g, ' ')
 					}
 		)
 	);
@@ -134,6 +134,8 @@ export function tidyRuns(runs: Run[]): Run[] {
 	while (out.length && !out[out.length - 1].atom && !out[out.length - 1].t.replace(/ /g, ''))
 		out.pop();
 	while (out.length && out[out.length - 1].atom === 'br') out.pop();
+	while (out.length && out[0].atom === 'br') out.shift();
+	if (out[0] && !out[0].atom) out[0].t = out[0].t.replace(/^ /, '');
 	const lastRun = out[out.length - 1];
 	if (lastRun && !lastRun.atom) lastRun.t = lastRun.t.replace(/ $/, '');
 	return mergeRuns(out);
@@ -176,12 +178,26 @@ function wrapTokens(open: Tok, close: Tok, inner: Tok[]): Tok[] {
 	return [...lead, open, ...body, close, ...trail];
 }
 
+/** Inline code is written as is, between enough backticks that none inside can close it. */
+function codeSpan(text: string): string {
+	const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map((m) => m.length));
+	const fence = '`'.repeat(longest + 1);
+	const pad = /^`|`$|^ .* $/.test(text) ? ' ' : '';
+	return fence + pad + text + pad + fence;
+}
+
 let emId = 0;
 
 function emit(runs: Run[], level: number): Tok[] {
 	if (level === 3) {
 		return runs.map((r) =>
-			r.atom === 'br' ? '\\\n' : r.atom ? `[[${r.atom}]]` : escapeMarkdown(r.t)
+			r.atom === 'br'
+				? '\\\n'
+				: r.atom
+					? `[[${r.atom}]]`
+					: r.c
+						? codeSpan(r.t)
+						: escapeMarkdown(r.t)
 		);
 	}
 	const key = (['a', 'b', 'i'] as const)[level];
