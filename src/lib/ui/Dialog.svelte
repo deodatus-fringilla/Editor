@@ -23,6 +23,8 @@
 
 <style>
 	.mde-dialog {
+		/* A host's CSS reset may remove the browser's own centring of a modal; set it here. */
+		margin: auto;
 		width: min(28rem, calc(100vw - 2rem));
 		padding: 1.25rem;
 		border: 1px solid var(--mde-border);
@@ -37,6 +39,7 @@
 	h2 {
 		margin: 0 0 1rem;
 		font-size: 1.0625rem;
+		font-weight: 600;
 	}
 	.mde-dialog :global(label) {
 		display: block;
